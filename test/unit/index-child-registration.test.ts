@@ -213,6 +213,18 @@ describe("subagent extension child mode", () => {
 				registerTool(tool) { if (tool.name === "subagent") registeredTool = tool; }, registerCommand() {}, registerShortcut() {}, registerMessageRenderer() {}, sendMessage() {}, getSessionName() {},
 			}, { get(target, prop) { return prop in target ? target[prop] : () => undefined; } });
 			registerSubagentExtension(fakePi);
+			if (typeof registeredTool?.prepareArguments !== "function") throw new Error("catalog prepareArguments guard was not registered");
+			const prepared = { action: "execute", input: { agent: "worker" } };
+			if (registeredTool.prepareArguments(prepared) !== prepared) throw new Error("valid catalog preparation must preserve object identity");
+			let preparationError;
+			try {
+				registeredTool.prepareArguments({ action: "execute", input: { agent: "worker" }, async: true });
+			} catch (error) {
+				preparationError = error;
+			}
+			if (!/root field\(s\): async.*Move every operation field under 'input'/.test(preparationError?.message ?? "")) {
+				throw new Error("catalog preparation did not provide a corrective root error: " + (preparationError?.message ?? ""));
+			}
 			const hook = handlers.get("tool_call")?.find((handler) => {
 				const blocked = handler({ toolName: "subagent", input: { action: "execute", input: { workflow: "run-ci", resourcePermit: { forged: true } } } });
 				return blocked?.block === true;
@@ -1657,6 +1669,10 @@ describe("subagent extension child mode", () => {
 			};
 			registerFanoutChildSubagentExtension(fakePi, { fanoutChild: true, depth: 1, waitTool: { enabled: true }, fast: false });
 			if (!registeredTool) throw new Error("tool not registered");
+			assert.throws(
+				() => registeredTool.prepareArguments({ action: "execute", input: { agent: "worker", task: "x" }, async: true }),
+				/async.*root accepts only 'action' and optional 'input'/,
+			);
 			const ctx = {
 				cwd: process.cwd(),
 				hasUI: false,

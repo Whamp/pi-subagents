@@ -247,7 +247,7 @@ function resolveRequiredSubagentModelCandidate(
 	if (resolved) return resolved;
 	const suggestion = suggestAlternateProviderModel(model, availableModels);
 	throw new Error(
-		`Unknown subagent model '${model}' in the active Pi model registry.${suggestion ? ` Did you mean '${suggestion}'?` : ""}`,
+		`Unknown subagent model '${model}' in the active Pi model registry.${suggestion ? ` Did you mean '${suggestion}'?` : ""} Explicit model selectors do not fall back. Call subagent({action:'models',input:{}}) and retry with a listed selector.`,
 	);
 }
 
@@ -338,7 +338,7 @@ function throwForExplicitModelExclusion(model: string): void {
 	if (!exclusion) return;
 	const reason = redactSecretValues((exclusion.reason ?? "runtime-failure").replace(/[\u0000-\u001f\u007f]+/g, " ")).slice(0, 240);
 	const expiry = Number.isFinite(exclusion.expiresAt) ? `; expires: ${new Date(exclusion.expiresAt).toISOString()}` : "";
-	throw new Error(`Requested subagent model '${model}' is excluded and cannot be replaced by a fallback (reason: ${reason}${expiry}).`);
+	throw new Error(`Requested subagent model '${model}' is excluded and cannot be replaced by a fallback (reason: ${reason}${expiry}). Call subagent({action:'models',input:{}}) and retry with a listed selector.`);
 }
 
 /**

@@ -12,7 +12,7 @@ import { deliverSubagentIntercomMessageEvent } from "../intercom/result-intercom
 import { resolveSubagentIntercomTarget } from "../intercom/intercom-bridge.ts";
 import { createSubagentCatalogParamsSchema } from "./schemas.ts";
 import { finalizeToolResult } from "./tool-result.ts";
-import { parseFanoutChildSubagentCatalogCall, renderSubagentCatalogHelp } from "./subagent-command-catalog.ts";
+import { parseFanoutChildSubagentCatalogCall, prepareSubagentCatalogArguments, renderSubagentCatalogHelp } from "./subagent-command-catalog.ts";
 import { loadConfig, resolveAsyncByDefault } from "./config.ts";
 import { type Details, type SubagentState } from "../shared/types.ts";
 
@@ -182,6 +182,7 @@ export default function registerFanoutChildSubagentExtension(pi: ExtensionAPI, c
 			"Read-only management and run-control actions remain available. Mutating management actions are rejected before execution.",
 		].join("\n"),
 		parameters: params,
+		prepareArguments: prepareSubagentCatalogArguments,
 		async execute(id, call, signal, onUpdate, ctx) {
 			const parsed = parseFanoutChildSubagentCatalogCall(call);
 			if (!parsed.ok) {

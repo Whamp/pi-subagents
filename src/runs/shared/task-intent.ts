@@ -22,6 +22,7 @@ const REVIEW_ONLY_PATTERNS = [
 	/\bsuggest fixes only\b/i,
 	/\bonly return findings\b/i,
 	/\breturn findings only\b/i,
+	/(?:^|[.!?\n])\s*no code changes\s*(?=[.!?\n]|$)/i,
 ];
 
 const REVIEWER_REQUIRED_EDIT_PATTERNS = [

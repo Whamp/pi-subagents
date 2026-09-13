@@ -3042,7 +3042,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 
 		assert.equal(result.isError, true);
 		assert.match(result.content[0]?.text ?? "", new RegExp(`Workflow '${workflowId}' validation failed before child launch; no children launched`));
-		assert.match(result.content[0]?.text ?? "", /Parallel plus sequential rewrite/);
+		assert.match(result.content[0]?.text ?? "", /Use top-level await, plain helper functions/);
 		assert.deepEqual(result.details.results, []);
 	});
 
@@ -3173,9 +3173,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.deepEqual(result.details.workflow?.trace.filter((entry) => entry.state !== "started").map(({ state }) => state).sort(), ["completed", "failed"]);
 	});
 
-	it("reports keyed runs.all result access after siblings settle", { skip: !createSubagentExecutor ? "executor not importable" : undefined }, async () => {
-		mockPi.onCall({ output: "first child completed", matchArgIncludes: "First task" });
-		mockPi.onCall({ output: "second child completed", matchArgIncludes: "Second task" });
+	it("rejects keyed runs.all result access before siblings launch", { skip: !createSubagentExecutor ? "executor not importable" : undefined }, async () => {
 		const executor = makeExecutor([makeAgent("echo")]);
 
 		const result = await executor.execute(
@@ -3196,10 +3194,10 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		);
 
 		assert.equal(result.isError, true);
-		assert.equal(mockPi.callCount(), 2);
-		assert.match(result.content[0]?.text ?? "", /runs\.all resolves to an ordered array, not a key map/);
-		assert.match(result.content[0]?.text ?? "", /Use results\[0\], array destructuring, or results\.map/);
-		assert.deepEqual(result.details.workflow?.trace.filter((entry) => entry.state === "completed").map(({ key }) => key).sort(), ["first", "second"]);
+		assert.equal(mockPi.callCount(), 0);
+		assert.match(result.content[0]?.text ?? "", /runs\.all returns an ordered array; 'children\.first' is keyed access/);
+		assert.match(result.content[0]?.text ?? "", /Use an index, destructuring, or map/);
+		assert.deepEqual(result.details.workflow?.trace, []);
 	});
 
 	it("keeps array access working when runs.all child keys collide with array properties", { skip: !createSubagentExecutor ? "executor not importable" : undefined }, async () => {

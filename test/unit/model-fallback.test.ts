@@ -387,7 +387,7 @@ describe("model fallback helpers", () => {
 		});
 		assert.throws(
 			() => buildModelCandidates("openai/gpt-5-mini", ["anthropic/claude-sonnet-4"], availableModels, undefined, { origin: "explicit" }),
-			/Requested subagent model 'openai\/gpt-5-mini' is excluded and cannot be replaced by a fallback/,
+			/Requested subagent model 'openai\/gpt-5-mini' is excluded and cannot be replaced by a fallback.*action:'models'/,
 		);
 	});
 
@@ -615,7 +615,7 @@ describe("resolveSubagentModelOverride (cross-session inherit, issue #266)", () 
 	it("rejects explicit models that the active registry cannot resolve", () => {
 		assert.throws(
 			() => resolveSubagentModelOverride("does-not-exist", parentModel, availableModels, undefined, { source: "explicit" }),
-			/Unknown subagent model 'does-not-exist'/,
+			/Unknown subagent model 'does-not-exist'.*Explicit model selectors do not fall back.*action:'models'/,
 		);
 		assert.throws(
 			() => resolveSubagentModelOverride("does-not-exist:high", parentModel, availableModels, undefined, { source: "explicit" }),

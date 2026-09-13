@@ -79,6 +79,10 @@ describe("registered subagent command description", () => {
       SUBAGENT_COMMAND_TOOL_DESCRIPTION,
       /Before launching.*\{action:'list',input:\{capabilities:true\}\}/,
     );
+    assert.match(
+      SUBAGENT_COMMAND_TOOL_DESCRIPTION,
+      /root accepts only action and input.*operation field under input/,
+    );
     assert.match(SUBAGENT_COMMAND_TOOL_DESCRIPTION, /async:false.*current turn/);
     assert.match(
       SUBAGENT_COMMAND_TOOL_DESCRIPTION,
@@ -90,6 +94,10 @@ describe("registered subagent command description", () => {
     assert.match(SUBAGENT_COMMAND_TOOL_DESCRIPTION, /\{workflow:'<name>',args:\{\.\.\.\}\}/);
     assert.match(SUBAGENT_COMMAND_TOOL_DESCRIPTION, /topic:'contract:<action>'.*when needed/);
     assert.match(SUBAGENT_COMMAND_TOOL_DESCRIPTION, /topic:'workflows'.*once/);
+    assert.match(
+      SUBAGENT_COMMAND_TOOL_DESCRIPTION,
+      /Every child.*synthesis or review.*maxSubagentSpawnsPerRun/,
+    );
     assert.match(SUBAGENT_COMMAND_TOOL_DESCRIPTION, /results\/output are terminal/);
     assert.match(
       SUBAGENT_COMMAND_TOOL_DESCRIPTION,

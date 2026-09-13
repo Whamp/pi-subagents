@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   parseFanoutChildSubagentCatalogCall,
   parseSubagentCatalogCall,
+  prepareSubagentCatalogArguments,
   renderSubagentCatalogHelp,
   SUBAGENT_COMMAND_CATALOG_ACTIONS,
 } from "../../src/extension/subagent-command-catalog.ts";
@@ -48,6 +49,19 @@ describe("subagent command catalog", () => {
     );
   });
 
+  it("rejects root fields with a corrective error before host schema validation", () => {
+    const valid = { action: "execute", input: { agent: "worker", async: true } } as const;
+    assert.equal(prepareSubagentCatalogArguments(valid), valid);
+    assert.throws(
+      () => prepareSubagentCatalogArguments({ ...valid, timeoutMs: 60_000 }),
+      /root field\(s\): timeoutMs.*root accepts only 'action'.*Move every operation field under 'input'.*action:'execute'/,
+    );
+    assert.throws(
+      () => prepareSubagentCatalogArguments({ action: "unknown", input: {} }),
+      /Unknown subagent action 'unknown'.*action:'help'/,
+    );
+  });
+
   it("preserves named-resource input without creating authority fields", () => {
     const parsed = parseSubagentCatalogCall({
       action: "execute",
@@ -87,7 +101,8 @@ describe("subagent command catalog", () => {
       parseSubagentCatalogCall({ action: "status", input: { model: "openai/gpt-5" } }),
       {
         ok: false,
-        error: "Action 'status' does not accept input field(s): model.",
+        error:
+          "Action 'status' does not accept input field(s): model. Use {action:'help',input:{topic:'contract:status'}} for the accepted fields.",
       },
     );
     assert.equal(
@@ -162,10 +177,54 @@ describe("subagent command catalog", () => {
       assert.match(schedule.text, /baseRef/);
       assert.match(schedule.text, /Unknown fields.*rejected before execution/i);
     }
+    const control = renderSubagentCatalogHelp("control").content[0];
+    assert.equal(control?.type, "text");
+    if (control?.type === "text") {
+      assert.match(control.text, /children\.list takes no filters/);
+      assert.match(control.text, /async and maxRuntimeMs are invalid/);
+      assert.match(control.text, /timeoutMs can cap/);
+      assert.match(control.text, /toolBudget can limit.*cannot add tools/);
+    }
     const executeContract = renderSubagentCatalogHelp("contract:execute").content[0];
     assert.equal(executeContract?.type, "text");
     if (executeContract?.type === "text") {
       assert.match(executeContract.text, /extensionBindings \(optional\)/);
+    }
+  });
+
+  it("adds corrective guidance for observed invalid fields and nested shapes", () => {
+    const cases = [
+      [{ action: "execute", input: { agent: "worker", thinking: "high" } }, /model suffix/],
+      [
+        { action: "execute", input: { agent: "worker", tools: ["read"] } },
+        /Configure child tools on the selected agent/,
+      ],
+      [
+        { action: "resume", input: { id: "run", message: "Continue", async: true } },
+        /resume always starts a detached revival/,
+      ],
+      [
+        { action: "resume", input: { id: "run", message: "Continue", maxRuntimeMs: 60_000 } },
+        /timeoutMs is its supported invocation ceiling/,
+      ],
+      [{ action: "children.list", input: { state: "done", limit: 5 } }, /without input filters/],
+      [
+        { action: "status", input: { id: "run", lines: 1_000 } },
+        /status\.lines must be an integer from 1 through 500/,
+      ],
+      [
+        { action: "execute", input: { agent: "worker", toolBudget: { soft: 2 } } },
+        /toolBudget requires \{hard,soft\?,block\?\}/,
+      ],
+      [
+        { action: "execute", input: { workflowScript: "return 1", preflight: { lanes: [] } } },
+        /preflight requires \{version:1,lanes/,
+      ],
+    ] as const;
+    for (const [call, expected] of cases) {
+      const parsed = parseSubagentCatalogCall(call);
+      assert.equal(parsed.ok, false, JSON.stringify(call));
+      if (!parsed.ok) assert.match(parsed.error, expected);
     }
   });
 

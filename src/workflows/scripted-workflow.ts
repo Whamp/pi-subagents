@@ -1484,6 +1484,42 @@ function walkAst(node: unknown, visit: (node: AstNode) => void, includeNestedFun
 	}
 }
 
+const WORKFLOW_NESTED_SCOPE_NODE_TYPES = new Set([
+	"ArrowFunctionExpression",
+	"BlockStatement",
+	"CatchClause",
+	"ClassDeclaration",
+	"ClassExpression",
+	"ForInStatement",
+	"ForOfStatement",
+	"ForStatement",
+	"FunctionDeclaration",
+	"FunctionExpression",
+	"StaticBlock",
+	"SwitchStatement",
+]);
+
+function walkAstInCurrentWorkflowScope(node: AstNode, visit: (node: AstNode) => void): void {
+	if (WORKFLOW_NESTED_SCOPE_NODE_TYPES.has(node.type)) {
+		return;
+	}
+	visit(node);
+	for (const [key, child] of Object.entries(node)) {
+		if (AST_LOCATION_KEYS.has(key)) {
+			continue;
+		}
+		if (Array.isArray(child)) {
+			for (const item of child) {
+				if (astNode(item)) {
+					walkAstInCurrentWorkflowScope(item, visit);
+				}
+			}
+		} else if (astNode(child)) {
+			walkAstInCurrentWorkflowScope(child, visit);
+		}
+	}
+}
+
 function definitelyNonJson(node: AstNode, normalizeUndefined = false): string | undefined {
 	if (node.type === "Literal") {
 		if (typeof node.bigint === "string") return "BigInt values are not JSON-representable";
@@ -1532,6 +1568,35 @@ function directObjectPropertyValue(node: AstNode, name: string): AstNode | undef
 	return value;
 }
 
+interface FinalStaticObjectProperty {
+	known: boolean;
+	value?: AstNode;
+}
+
+function finalStaticObjectProperty(node: AstNode, name: string): FinalStaticObjectProperty {
+	if (node.type !== "ObjectExpression" || !Array.isArray(node.properties)) return { known: false };
+	for (let index = node.properties.length - 1; index >= 0; index--) {
+		const property = node.properties[index];
+		if (!astNode(property) || property.type !== "Property") return { known: false };
+		const key = staticPropertyKey(property);
+		if (key === undefined) return { known: false };
+		if (key === name) return astNode(property.value) ? { known: true, value: property.value } : { known: false };
+	}
+	return { known: true };
+}
+
+function staticallyNonString(node: AstNode): boolean {
+	return node.type === "ObjectExpression" || node.type === "ArrayExpression" || node.type === "FunctionExpression" || node.type === "ArrowFunctionExpression" || (node.type === "Literal" && literalString(node) === undefined);
+}
+
+function staticallyNonObject(node: AstNode): boolean {
+	return node.type === "ArrayExpression" || node.type === "FunctionExpression" || node.type === "ArrowFunctionExpression" || node.type === "TemplateLiteral" || node.type === "Literal";
+}
+
+function staticallyNonArray(node: AstNode): boolean {
+	return node.type === "ObjectExpression" || node.type === "FunctionExpression" || node.type === "ArrowFunctionExpression" || node.type === "TemplateLiteral" || node.type === "Literal";
+}
+
 function validateStaticBaseRef(params: AstNode, owner: string): WorkflowScriptValidationError[] {
 	if (params.type !== "ObjectExpression" || !Array.isArray(params.properties)) return [];
 	// Inspect the final definition only. A later spread or unknown key may overwrite it.
@@ -1557,10 +1622,59 @@ function directRunsAllKeys(call: AstNode): Array<{ key: string; node: AstNode }>
 	const items = astNode(args[0]) && args[0].type === "ArrayExpression" && Array.isArray(args[0].elements) ? args[0].elements : [];
 	return items.flatMap((item) => {
 		if (!astNode(item)) return [];
-		const keyNode = directObjectPropertyValue(item, "key");
-		const key = literalString(keyNode);
-		return keyNode && key !== undefined ? [{ key, node: keyNode }] : [];
+		const keyProperty = finalStaticObjectProperty(item, "key");
+		const key = literalString(keyProperty.value);
+		return keyProperty.value && key !== undefined ? [{ key, node: keyProperty.value }] : [];
 	});
+}
+
+function validateStaticRunsAllArray(array: AstNode): WorkflowScriptValidationError[] {
+	if (array.type !== "ArrayExpression" || !Array.isArray(array.elements)) return [];
+	const errors: WorkflowScriptValidationError[] = [];
+	for (let index = 0; index < array.elements.length; index++) {
+		const item = array.elements[index];
+		if (!astNode(item)) {
+			errors.push({ message: `runs.all item ${index} is missing. Use a dense array of {key,...} objects.`, ...nodeLocation(array) });
+			continue;
+		}
+		if (staticallyNonObject(item)) {
+			errors.push({ message: `runs.all item ${index} must be an object with a key.`, ...nodeLocation(item) });
+			continue;
+		}
+		const keyProperty = finalStaticObjectProperty(item, "key");
+		if (keyProperty.known && !keyProperty.value) {
+			errors.push({ message: `runs.all item ${index} requires key. Use {key:"stable-key",agent,task,...}.`, ...nodeLocation(item) });
+		} else if (keyProperty.value) {
+			const key = literalString(keyProperty.value);
+			if (staticallyNonString(keyProperty.value)) errors.push({ message: `runs.all item ${index} key must be a string.`, ...nodeLocation(keyProperty.value) });
+			else if (key !== undefined && !KEY_PATTERN.test(key)) errors.push({ message: "runs.all item key must be 1-128 characters using letters, numbers, '.', '_' or '-', and start with a letter or number.", ...nodeLocation(keyProperty.value) });
+		}
+		errors.push(...validateStaticBaseRef(item, "runs.all item"));
+		const message = definitelyNonJson(item);
+		if (message) errors.push({ message: `runs.all item params are invalid: ${message}.`, ...nodeLocation(item) });
+	}
+	return errors;
+}
+
+function adjacentConstRunsAllArray(statements: unknown[], index: number): AstNode | undefined {
+	if (index < 1) return undefined;
+	const declaration = statements[index - 1];
+	const statement = statements[index];
+	if (!astNode(declaration) || !astNode(statement)) return undefined;
+	if (declaration.type !== "VariableDeclaration" || declaration.kind !== "const" || !Array.isArray(declaration.declarations) || declaration.declarations.length !== 1) return undefined;
+	const binding = declaration.declarations[0];
+	if (!astNode(binding) || !astNode(binding.id) || binding.id.type !== "Identifier" || !astNode(binding.init) || binding.init.type !== "ArrayExpression") return undefined;
+	let expression = statement.type === "ReturnStatement" && astNode(statement.argument)
+		? statement.argument
+		: statement.type === "ExpressionStatement" && astNode(statement.expression)
+			? statement.expression
+			: statement.type === "VariableDeclaration" && Array.isArray(statement.declarations) && statement.declarations.length === 1 && astNode(statement.declarations[0]) && astNode(statement.declarations[0].init)
+				? statement.declarations[0].init
+				: undefined;
+	if (expression?.type === "AwaitExpression" && astNode(expression.argument)) expression = expression.argument;
+	if (!directRunsCall(expression, "all")) return undefined;
+	const args = Array.isArray(expression.arguments) ? expression.arguments : [];
+	return astNode(args[0]) && args[0].type === "Identifier" && args[0].name === binding.id.name ? binding.init : undefined;
 }
 
 /** Parse a workflowScript and apply only rules that are decidable from its local syntax. */
@@ -1589,25 +1703,28 @@ export function validateWorkflowScript(script: string): WorkflowScriptValidation
 		}
 		if (directRunsCall(node, "run")) {
 			const args = Array.isArray(node.arguments) ? node.arguments : [];
-			const keyNode = astNode(args[0]) ? args[0] : undefined;
-			const key = literalString(keyNode);
-			if (keyNode && key !== undefined && !KEY_PATTERN.test(key)) errors.push({ message: "runs.run key must be 1-128 characters using letters, numbers, '.', '_' or '-', and start with a letter or number.", ...nodeLocation(keyNode) });
-			if (astNode(args[1])) {
-				errors.push(...validateStaticBaseRef(args[1], "runs.run"));
-				const message = definitelyNonJson(args[1]);
-				if (message) errors.push({ message: `runs.run params are invalid: ${message}.`, ...nodeLocation(args[1]) });
+			const hasSpreadArgument = args.some((argument) => astNode(argument) && argument.type === "SpreadElement");
+			if (!hasSpreadArgument) {
+				const keyNode = astNode(args[0]) ? args[0] : undefined;
+				const paramsNode = astNode(args[1]) ? args[1] : undefined;
+				const key = literalString(keyNode);
+				if (!keyNode || !paramsNode) errors.push({ message: "runs.run requires a key and params. Use runs.run(\"stable-key\", {agent,task,...}).", ...nodeLocation(node) });
+				else {
+					if (staticallyNonString(keyNode)) errors.push({ message: "runs.run key must be a string. Use runs.run(\"stable-key\", {agent,task,...}).", ...nodeLocation(keyNode) });
+					else if (key !== undefined && !KEY_PATTERN.test(key)) errors.push({ message: "runs.run key must be 1-128 characters using letters, numbers, '.', '_' or '-', and start with a letter or number.", ...nodeLocation(keyNode) });
+					if (staticallyNonObject(paramsNode)) errors.push({ message: "runs.run params must be an object. Use runs.run(\"stable-key\", {agent,task,...}).", ...nodeLocation(paramsNode) });
+					errors.push(...validateStaticBaseRef(paramsNode, "runs.run"));
+					const message = definitelyNonJson(paramsNode);
+					if (message) errors.push({ message: `runs.run params are invalid: ${message}.`, ...nodeLocation(paramsNode) });
+				}
 			}
 		}
 		if (directRunsCall(node, "all")) {
-			for (const entry of directRunsAllKeys(node)) if (!KEY_PATTERN.test(entry.key)) errors.push({ message: "runs.all item key must be 1-128 characters using letters, numbers, '.', '_' or '-', and start with a letter or number.", ...nodeLocation(entry.node) });
 			const args = Array.isArray(node.arguments) ? node.arguments : [];
-			if (astNode(args[0]) && args[0].type === "ArrayExpression" && Array.isArray(args[0].elements)) {
-				for (const item of args[0].elements) if (astNode(item)) {
-					errors.push(...validateStaticBaseRef(item, "runs.all item"));
-					const message = definitelyNonJson(item);
-					if (message) errors.push({ message: `runs.all item params are invalid: ${message}.`, ...nodeLocation(item) });
-				}
-			}
+			const itemsNode = astNode(args[0]) ? args[0] : undefined;
+			if (!itemsNode) errors.push({ message: "runs.all requires an array of keyed child objects. Use runs.all([{key:\"stable-key\",agent,task,...}]).", ...nodeLocation(node) });
+			else if (staticallyNonArray(itemsNode)) errors.push({ message: "runs.all input must be an array. Use runs.all([{key:\"stable-key\",agent,task,...}]).", ...nodeLocation(itemsNode) });
+			else errors.push(...validateStaticRunsAllArray(itemsNode));
 		}
 		if (directRunsCall(node, "host")) errors.push(...validateStaticHostCall(node));
 		const boundaryValue = node.type === "CallExpression" && astNode(node.callee) && node.callee.type === "Identifier" && node.callee.name === "emit" && Array.isArray(node.arguments) && astNode(node.arguments[0])
@@ -1617,17 +1734,20 @@ export function validateWorkflowScript(script: string): WorkflowScriptValidation
 				: undefined;
 		if (boundaryValue) {
 			const message = definitelyNonJson(boundaryValue);
-			if (message) errors.push({ message: `workflowScript boundary value is invalid: ${message}.`, ...nodeLocation(boundaryValue) });
+			const owner = astNode(node.callee) && node.callee.type === "MemberExpression" ? "state.set" : "emit";
+			if (message) errors.push({ message: `${owner} boundary value is invalid: ${message}.`, ...nodeLocation(boundaryValue) });
 		}
 	});
 	walkAst(workflowBody, (node) => {
 		if (node.type !== "ReturnStatement" || !astNode(node.argument)) return;
 		const message = definitelyNonJson(node.argument, true);
-		if (message) errors.push({ message: `workflowScript boundary value is invalid: ${message}.`, ...nodeLocation(node.argument) });
+		if (message) errors.push({ message: `workflowScript return boundary value is invalid: ${message}.`, ...nodeLocation(node.argument) });
 	}, false);
 
 	if (workflowBody.type === "BlockStatement" && Array.isArray(workflowBody.body)) {
 		for (let statementIndex = 0; statementIndex < workflowBody.body.length; statementIndex++) {
+			const adjacentArray = adjacentConstRunsAllArray(workflowBody.body, statementIndex);
+			if (adjacentArray) errors.push(...validateStaticRunsAllArray(adjacentArray));
 			const statement = workflowBody.body[statementIndex];
 			if (!astNode(statement) || statement.type !== "VariableDeclaration" || !Array.isArray(statement.declarations)) continue;
 			for (const declaration of statement.declarations) {
@@ -1638,11 +1758,16 @@ export function validateWorkflowScript(script: string): WorkflowScriptValidation
 				const args = Array.isArray(declaration.init.argument.arguments) ? declaration.init.argument.arguments : [];
 				const itemCount = astNode(args[0]) && args[0].type === "ArrayExpression" && Array.isArray(args[0].elements) ? args[0].elements.length : 0;
 				const arrayResultShape = Array.from({ length: itemCount });
-				for (const later of workflowBody.body.slice(statementIndex + 1)) walkAst(later, (node) => {
-					if (node.type !== "MemberExpression" || !astNode(node.object) || node.object.type !== "Identifier" || node.object.name !== name) return;
-					const property = node.computed === true ? literalString(node.property) : astNode(node.property) && node.property.type === "Identifier" ? node.property.name as string : undefined;
-					if (property && keys.has(property) && !(property in arrayResultShape)) errors.push({ message: `runs.all returns an ordered array; '${name}.${property}' is keyed access. Use an index, destructuring, or map(...).`, ...nodeLocation(node) });
-				}, false);
+				for (const later of workflowBody.body.slice(statementIndex + 1)) {
+					if (!astNode(later)) {
+						continue;
+					}
+					walkAstInCurrentWorkflowScope(later, (node) => {
+						if (node.type !== "MemberExpression" || !astNode(node.object) || node.object.type !== "Identifier" || node.object.name !== name) return;
+						const property = node.computed === true ? literalString(node.property) : astNode(node.property) && node.property.type === "Identifier" ? node.property.name as string : undefined;
+						if (property && keys.has(property) && !(property in arrayResultShape)) errors.push({ message: `runs.all returns an ordered array; '${name}.${property}' is keyed access. Use an index, destructuring, or map(...).`, ...nodeLocation(node) });
+					});
+				}
 			}
 		}
 	}
@@ -1719,6 +1844,15 @@ export async function runWorkflowScript(options: RunWorkflowScriptOptions): Prom
 	if (options.timeoutMs !== undefined && (!Number.isInteger(options.timeoutMs) || options.timeoutMs < 1)) throw new Error("workflow script timeout must be a positive integer.");
 	if (options.globalConcurrencyLimit !== undefined && (!Number.isSafeInteger(options.globalConcurrencyLimit) || options.globalConcurrencyLimit < 1)) {
 		throw new Error("workflow script global concurrency limit must be a positive integer.");
+	}
+	const validation = validateWorkflowScript(options.script);
+	if (!validation.ok) {
+		const diagnostics = validation.errors.map((error) => `- ${error.line === undefined ? "" : `line ${error.line}${error.column === undefined ? "" : `:${error.column}`}: `}${error.message}`).join("\n");
+		const syntaxHeading = validation.errors.some(({ message }) => /unexpected|unterminated|invalid or unexpected token/i.test(message)) ? "\nOriginal SyntaxError:" : "";
+		throw new WorkflowScriptError(
+			`workflowScript validation failed before child launch; no children launched. workflowScript must be valid JavaScript.\nIf task text contains Markdown fences or backticks, use an array joined with "\\n" or escaped strings instead of a raw backtick template literal.${syntaxHeading}\n${diagnostics}`,
+			{ emits: [], console: [], trace: [], children: [] },
+		);
 	}
 	const launchSemaphore = new Semaphore(options.globalConcurrencyLimit ?? DEFAULT_GLOBAL_CONCURRENCY_LIMIT);
 

@@ -66,6 +66,20 @@ describe("classifyTaskMutationIntent", () => {
 		assert.equal(classifyTaskMutationIntent("worker", "Report on the extraction pipeline. Do not modify project/source files.").kind, "read-only");
 		assert.equal(classifyTaskMutationIntent("reviewer", "Final correctness review after prior fixes. Inspect all changed files and tests. Do not modify project/source files. Report findings.").kind, "read-only");
 		assert.equal(classifyTaskMutationIntent("worker", "Verification-only task. Do not edit product/source/config files.\n   Run a disposable check, delete its temporary harness, and retain only\n   a sanitized report at an explicitly named artifact path.").kind, "read-only");
+		const briefing = "Write an architectural decision briefing for a senior engineer.\nExplorer findings follow.\n- Implement the parser fix.\n- Add integration coverage.\nNo code changes.";
+		assert.equal(classifyTaskMutationIntent("worker", briefing).kind, "read-only");
+		assert.equal(expectsImplementationMutation("worker", briefing), false);
+		assert.equal(taskMayMutate(briefing), false);
+	});
+
+	it("does not mistake scoped no-code-change constraints for a read-only task", () => {
+		for (const task of [
+			"No code changes outside src/. Implement the fix in src/parser.ts.",
+			"Implement the fix. No code changes are needed in tests.",
+		]) {
+			assert.equal(classifyTaskMutationIntent("worker", task).kind, "implementation", task);
+			assert.equal(taskMayMutate(task), true, task);
+		}
 	});
 
 	it("strips repeated prohibition phrases before testing write intent", () => {

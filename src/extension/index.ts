@@ -72,7 +72,7 @@ import { resolveCurrentSubagentCapabilityCeiling } from "../runs/shared/capabili
 import { formatDuration, shortenPath } from "../shared/formatters.ts";
 import { applyModelExclusionsConfig, loadConfig, resolveAsyncByDefault, resolveScheduledStoreRoot } from "./config.ts";
 import { SUBAGENT_COMMAND_TOOL_DESCRIPTION } from "./tool-description.ts";
-import { parseSubagentCatalogCall, renderSubagentCatalogHelp } from "./subagent-command-catalog.ts";
+import { parseSubagentCatalogCall, prepareSubagentCatalogArguments, renderSubagentCatalogHelp } from "./subagent-command-catalog.ts";
 import { formatWorkflowPreflightSummary, normalizeWorkflowPreflight } from "../workflows/workflow-preflight.ts";
 import { finalizeToolResult } from "./tool-result.ts";
 import { collectGoalContinuationNotices } from "../missions/goal-driver.ts";
@@ -752,6 +752,7 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 		label: "Subagent",
 		description: SUBAGENT_COMMAND_TOOL_DESCRIPTION,
 		parameters,
+		prepareArguments: prepareSubagentCatalogArguments,
 
 		async execute(id, params, signal, onUpdate, ctx) {
 			const parsed = parseSubagentCatalogCall(params);

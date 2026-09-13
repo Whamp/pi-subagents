@@ -1,0 +1,723 @@
+[
+  {
+    "sourceId": "call_0DAenUrezhAoArD7XK5OMcvp|fc_09333ae17dc85f3b016aa482af314c87d099c8f20419f40a59",
+    "observedAt": "2026-09-11T22:37:42.143Z",
+    "boundary": "action-fields",
+    "fields": [
+      "tools"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {
+        "tools": [
+          "read",
+          "grep",
+          "find",
+          "ls",
+          "bash"
+        ]
+      }
+    }
+  },
+  {
+    "sourceId": "call_1MR9FnL99mNFzEIX1FfjcVa0|fc_0edc09ee3067164c016aa4e87ca50487d09aca2bdb688407c8",
+    "observedAt": "2026-09-12T05:51:58.836Z",
+    "boundary": "action-fields",
+    "fields": [
+      "async"
+    ],
+    "call": {
+      "action": "resume",
+      "input": {
+        "async": false
+      }
+    }
+  },
+  {
+    "sourceId": "call_2mExfmUcPDsnNGGVehUGnGCP|fc_015f0b5969b4b3da016aa1c64cf98087d086e7218da1e9771f",
+    "observedAt": "2026-09-09T20:49:24.924Z",
+    "boundary": "action-fields",
+    "fields": [
+      "async"
+    ],
+    "call": {
+      "action": "resume",
+      "input": {
+        "async": false
+      }
+    }
+  },
+  {
+    "sourceId": "call_6JsPsGaoYEKgZsjJD3UHdAw2|fc_0edc09ee3067164c016aa4e886ffe087d0819f2f718f58f733",
+    "observedAt": "2026-09-12T05:52:07.215Z",
+    "boundary": "action-fields",
+    "fields": [
+      "state",
+      "limit"
+    ],
+    "call": {
+      "action": "children.list",
+      "input": {
+        "state": "completed",
+        "limit": 10
+      }
+    }
+  },
+  {
+    "sourceId": "call_7fIHw1MjH9WMaYMQQEqzErHn|fc_0656958d20bb765f016aa0f285621c87d09aedcf49915800d7",
+    "observedAt": "2026-09-09T05:46:08.001Z",
+    "boundary": "canonical-input",
+    "call": {
+      "action": "execute",
+      "input": {
+        "agent": "worker",
+        "toolBudget": {
+          "soft": 40
+        }
+      }
+    }
+  },
+  {
+    "sourceId": "call_86oUkWG8jK0LZANl9A5NyoKZ|fc_0a51dcf9edc7d1d7016aa1b081ab8c87d09f3394b225bffb6b",
+    "observedAt": "2026-09-09T19:16:31.416Z",
+    "boundary": "workflow",
+    "call": {
+      "action": "execute",
+      "input": {
+        "workflowScript": "return runs.run({ agent: \"worker\", task: \"fixture\" });"
+      }
+    }
+  },
+  {
+    "sourceId": "call_9SISGEJmpilN7GVMInVvvhgt|fc_0ba8a749b7aefa4c016aa60192417087d0811131687731a357",
+    "observedAt": "2026-09-13T01:51:15.592Z",
+    "boundary": "canonical-input",
+    "call": {
+      "action": "status",
+      "input": {
+        "id": "72e90ea7-70e6-470c-9adc-516cf81d7cc7",
+        "lines": 1000
+      }
+    }
+  },
+  {
+    "sourceId": "call_BTtbUPsYlE9aU5hrPmn3Hf1u|fc_0ba8a749b7aefa4c016aa45fa04a2c87d0af9597f5af4dc75e",
+    "observedAt": "2026-09-11T20:08:05.677Z",
+    "boundary": "action-fields",
+    "fields": [
+      "thinking"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {
+        "thinking": "high"
+      }
+    }
+  },
+  {
+    "sourceId": "call_BYPRyWM9H2D8wFTwicfbQqHk|fc_0121fc5e1ca504ed016aa20183071087d096230c842cc5df19",
+    "observedAt": "2026-09-10T01:01:55.240Z",
+    "boundary": "canonical-input",
+    "call": {
+      "action": "status",
+      "input": {
+        "id": "47d76b86-d621-4da8-81e2-7d1d558a98ba",
+        "lines": 1200
+      }
+    }
+  },
+  {
+    "sourceId": "call_D0qrnXxXAZrwL1ojclEOZeGD|fc_0edc09ee3067164c016aa5d1253ce487d096fd574c73fcf783",
+    "observedAt": "2026-09-12T22:24:41.526Z",
+    "boundary": "action-fields",
+    "fields": [
+      "async"
+    ],
+    "call": {
+      "action": "resume",
+      "input": {
+        "async": false
+      }
+    }
+  },
+  {
+    "sourceId": "call_FAgw9OCboMNrKpGNEgWdqbE5|fc_09333ae17dc85f3b016aa576caa3a887d08dfd2c39a6dcf72c",
+    "observedAt": "2026-09-12T15:59:26.274Z",
+    "boundary": "envelope",
+    "fields": [
+      "async",
+      "timeoutMs"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "async": false,
+      "timeoutMs": 1200000
+    }
+  },
+  {
+    "sourceId": "call_GXr1B4JLnl0me0c9EO0b4Yss|fc_09333ae17dc85f3b016aa57fa9403c87d0b776ea6e3402fe11",
+    "observedAt": "2026-09-12T16:37:06.360Z",
+    "boundary": "workflow",
+    "call": {
+      "action": "execute",
+      "input": {
+        "workflowScript": "const tasks = [{ agent: \"reviewer\", task: \"fixture\" }];\nconst results = await runs.all(tasks);\nreturn results;"
+      }
+    }
+  },
+  {
+    "sourceId": "call_Gy4bq6UuFqV3peQBLJ562fVe|fc_0edc09ee3067164c016aa509ffa26087d0b31f33c894f5684c",
+    "observedAt": "2026-09-12T08:15:06.173Z",
+    "boundary": "action-fields",
+    "fields": [
+      "async"
+    ],
+    "call": {
+      "action": "resume",
+      "input": {
+        "async": false
+      }
+    }
+  },
+  {
+    "sourceId": "call_ICMzkYuSXseuWeMiy7yBCzoL|fc_0bdb295b152b7996016aa4d7f8f1f887d086d58f9d637dcba2",
+    "observedAt": "2026-09-12T04:41:29.602Z",
+    "boundary": "canonical-input",
+    "call": {
+      "action": "status",
+      "input": {
+        "id": "5b9db103-482e-4938-acc6-6750abafe494",
+        "view": "summary"
+      }
+    }
+  },
+  {
+    "sourceId": "call_IrfuMhCr1pQixik2eCBzd0Qm|fc_0c95801762c2d861016aa5d480166487d09dd99d353bd0d10b",
+    "observedAt": "2026-09-12T22:39:03.880Z",
+    "boundary": "envelope",
+    "fields": [
+      "timeout"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "timeout": 120000
+    }
+  },
+  {
+    "sourceId": "call_JMz6haJpp4wOefWwXoySpbvU|fc_0edc09ee3067164c016aa4df21546887d08cf7b66e4262b7ac",
+    "observedAt": "2026-09-12T05:12:28.595Z",
+    "boundary": "canonical-input",
+    "call": {
+      "action": "execute",
+      "input": {
+        "agent": "worker",
+        "toolBudget": {
+          "soft": 80,
+          "hard": 140,
+          "blockAfterHard": "*"
+        }
+      }
+    }
+  },
+  {
+    "sourceId": "call_NjVwTjSSvDGcZ2ByFJ0lQCLt|fc_015f0b5969b4b3da016aa21e8e284087d08fca330fbb89d206",
+    "observedAt": "2026-09-10T03:05:56.289Z",
+    "boundary": "action-fields",
+    "fields": [
+      "resume"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {
+        "resume": "61df638b-89da-4054-b8de-e7829cd845b8"
+      }
+    }
+  },
+  {
+    "sourceId": "call_NsgQiYQhdX5giJ0xmOmjqgl5|fc_0ba8a749b7aefa4c016aa4809df16c87d0905fbddd1c065ab4",
+    "observedAt": "2026-09-11T22:28:54.236Z",
+    "boundary": "canonical-input",
+    "call": {
+      "action": "execute",
+      "input": {
+        "agent": "worker",
+        "toolBudget": {
+          "maxCalls": 40,
+          "mode": "soft"
+        }
+      }
+    }
+  },
+  {
+    "sourceId": "call_RCyE6NTgztvf2IBcOTSCQvBQ|fc_0a51dcf9edc7d1d7016aa1b012083487d09698bb92c3551cf7",
+    "observedAt": "2026-09-09T19:14:27.944Z",
+    "boundary": "canonical-input",
+    "call": {
+      "action": "status",
+      "input": {
+        "id": "57fba610-8673-45e9-be35-8be6f90c5c5d",
+        "lines": 1000
+      }
+    }
+  },
+  {
+    "sourceId": "call_RnjkEgBgsuP64tdikvyV1B5J|fc_09333ae17dc85f3b016aa4751de7b487d0a3964ba9f565d4c3",
+    "observedAt": "2026-09-11T21:39:53.661Z",
+    "boundary": "envelope",
+    "fields": [
+      "timeoutMs",
+      "toolTimeoutMs",
+      "preflight"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "timeoutMs": 1800000,
+      "toolTimeoutMs": 600000,
+      "preflight": {}
+    }
+  },
+  {
+    "sourceId": "call_SS5p3IKHrc7IE9JkaXAUGXb2|fc_0121fc5e1ca504ed016aa2018306f887d0b1b04a33fafcc34d",
+    "observedAt": "2026-09-10T01:01:55.240Z",
+    "boundary": "canonical-input",
+    "call": {
+      "action": "status",
+      "input": {
+        "id": "0b7bdb09-124e-472b-9514-c768de8a3ac8",
+        "lines": 1200
+      }
+    }
+  },
+  {
+    "sourceId": "call_Vq2YdMDzJZynzspsI2r0huRX|fc_0edc09ee3067164c016aa4e4ca3fcc87d0850a0e84340dde9c",
+    "observedAt": "2026-09-12T05:36:22.764Z",
+    "boundary": "envelope",
+    "fields": [
+      "globalConcurrencyLimit",
+      "maxSubagentSpawnsPerRun",
+      "acceptance",
+      "chatProgress",
+      "mission"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "globalConcurrencyLimit": 2,
+      "maxSubagentSpawnsPerRun": 2,
+      "acceptance": false,
+      "chatProgress": "<value>",
+      "mission": {}
+    }
+  },
+  {
+    "sourceId": "call_VrE5JOlM95uR9vjGO3NK7ko6|fc_0a51dcf9edc7d1d7016aa1c5aa006c87d09e782c50c6aaa609",
+    "observedAt": "2026-09-09T20:46:39.097Z",
+    "boundary": "action-fields",
+    "fields": [
+      "timeout"
+    ],
+    "call": {
+      "action": "resume",
+      "input": {
+        "timeout": 600000
+      }
+    }
+  },
+  {
+    "sourceId": "call_Y0zRaQV0owSBVjy6liKs73VW|fc_0656958d20bb765f016aa0f2680b7087d088320405400e8dac",
+    "observedAt": "2026-09-09T05:45:37.506Z",
+    "boundary": "envelope",
+    "fields": [
+      "timeoutMs",
+      "globalConcurrencyLimit",
+      "maxSubagentSpawnsPerRun",
+      "toolBudget"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "timeoutMs": 1200000,
+      "globalConcurrencyLimit": 2,
+      "maxSubagentSpawnsPerRun": 2,
+      "toolBudget": {}
+    }
+  },
+  {
+    "sourceId": "call_YBTfg3A5HiLG4O40Kf4dmsV5|fc_0121fc5e1ca504ed016aa1c62b850887d0944371952c4d2a38",
+    "observedAt": "2026-09-09T20:48:49.596Z",
+    "boundary": "action-fields",
+    "fields": [
+      "async"
+    ],
+    "call": {
+      "action": "resume",
+      "input": {
+        "async": false
+      }
+    }
+  },
+  {
+    "sourceId": "call_YDyg4G9JPRNUoJyaBABZ4PWR|fc_0ba8a749b7aefa4c016aa5dff5416c87d0851063a985bb0dae",
+    "observedAt": "2026-09-12T23:27:59.257Z",
+    "boundary": "envelope",
+    "fields": [
+      "async",
+      "timeoutMs"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "async": false,
+      "timeoutMs": 1800000
+    }
+  },
+  {
+    "sourceId": "call_YKGJga3rdJ2WwWELlFTV515h|fc_0bdb295b152b7996016aa4dea165d487d085b5acd46f9794a6",
+    "observedAt": "2026-09-12T05:10:11.331Z",
+    "boundary": "envelope",
+    "fields": [
+      "async"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "async": false
+    }
+  },
+  {
+    "sourceId": "call_ZSVxjbYA3K9eE8q9zkrwuYss|fc_0121fc5e1ca504ed016aa235068ad087d08f5ab2542d9b1557",
+    "observedAt": "2026-09-10T04:42:07.983Z",
+    "boundary": "envelope",
+    "fields": [
+      "async"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "async": false
+    }
+  },
+  {
+    "sourceId": "call_aknv1poIpx13QRcuaUA4jCKX|fc_0121fc5e1ca504ed016aa1e055dc1487d08c44496949a14b89",
+    "observedAt": "2026-09-09T22:40:37.303Z",
+    "boundary": "envelope",
+    "fields": [
+      "async"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "async": false
+    }
+  },
+  {
+    "sourceId": "call_bj9ZpcD2GMtE4UjevaNNvoI1|fc_09333ae17dc85f3b016aa48154171087d08784096221b457ba",
+    "observedAt": "2026-09-11T22:31:58.373Z",
+    "boundary": "envelope",
+    "fields": [
+      "async"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "async": false
+    }
+  },
+  {
+    "sourceId": "call_d1lMggGwrd8cbQ4zrvl7G2n9|fc_09333ae17dc85f3b016aa48e3cf94087d0ba29156b96769e60",
+    "observedAt": "2026-09-11T23:26:56.922Z",
+    "boundary": "schedule-time",
+    "call": {
+      "action": "schedule.create",
+      "input": {
+        "at": "+5h30m",
+        "workflowScript": "return 1;"
+      }
+    }
+  },
+  {
+    "sourceId": "call_dw56JbXM5yIMSpc54aPj9xFD|fc_09333ae17dc85f3b016aa5fdd68a8087d087ef5c279760f422",
+    "observedAt": "2026-09-13T01:35:35.940Z",
+    "boundary": "envelope",
+    "fields": [
+      "async",
+      "timeoutMs"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "async": false,
+      "timeoutMs": 1200000
+    }
+  },
+  {
+    "sourceId": "call_dzBsMVGsZuEFOzBaQBxQhnpE|fc_0f95a28443550cc1016aa1c0f5a53887d09ff10e981ab770c0",
+    "observedAt": "2026-09-09T20:26:40.900Z",
+    "boundary": "action-fields",
+    "fields": [
+      "thinking"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {
+        "thinking": "max"
+      }
+    }
+  },
+  {
+    "sourceId": "call_eJyTY5b9qUIyuarWcRgFwadD|fc_09333ae17dc85f3b016aa4797e6c6887d0a4e6146ac3404c6a",
+    "observedAt": "2026-09-11T21:58:22.803Z",
+    "boundary": "canonical-input",
+    "call": {
+      "action": "status",
+      "input": {
+        "id": "a5b22154-7d3c-4aab-ad5a-692d20adfe21",
+        "lines": 1000
+      }
+    }
+  },
+  {
+    "sourceId": "call_huBAvykwTKbgz0DWvCkxDn2G|fc_0a51dcf9edc7d1d7016aa1b097891887d0aa79e0d938aa804b",
+    "observedAt": "2026-09-09T19:16:53.377Z",
+    "boundary": "workflow",
+    "call": {
+      "action": "execute",
+      "input": {
+        "workflowScript": "return runs.run({ key: \"synthesis\", agent: \"worker\", task: \"fixture\" });"
+      }
+    }
+  },
+  {
+    "sourceId": "call_jqcjr0dnvmbzQ8jd6AWzub2J|fc_09333ae17dc85f3b016aa4752c698887d0affc8d07aa97781f",
+    "observedAt": "2026-09-11T21:40:08.046Z",
+    "boundary": "canonical-input",
+    "call": {
+      "action": "execute",
+      "input": {
+        "workflowScript": "return 1;",
+        "preflight": {
+          "estimatedChildren": 2,
+          "modelFamilies": [
+            "<value>",
+            "<value>"
+          ],
+          "notes": "<value>"
+        }
+      }
+    }
+  },
+  {
+    "sourceId": "call_knAYjEBcRg17vDvuf63117ko|fc_0f95a28443550cc1016aa17f01a64887d09a4e271d8a1dc8cf",
+    "observedAt": "2026-09-09T15:45:33.699Z",
+    "boundary": "envelope",
+    "fields": [
+      "async"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "async": false
+    }
+  },
+  {
+    "sourceId": "call_ko9u5HLkw74W89alVmgtJLSF|fc_0ba8a749b7aefa4c016aa45b921c0487d0a804a7ff45714cf3",
+    "observedAt": "2026-09-11T19:50:56.532Z",
+    "boundary": "schedule-time",
+    "call": {
+      "action": "schedule.create",
+      "input": {
+        "at": "+3h20m",
+        "workflowScript": "return 1;"
+      }
+    }
+  },
+  {
+    "sourceId": "call_nN0asFKBzy9rei9kN4MCNWY9|fc_0121fc5e1ca504ed016aa20183072087d0aea81e68dff34d72",
+    "observedAt": "2026-09-10T01:01:55.240Z",
+    "boundary": "canonical-input",
+    "call": {
+      "action": "status",
+      "input": {
+        "id": "2f13d6cc-d8a7-4f90-82d4-d82ed2e5860a",
+        "lines": 1200
+      }
+    }
+  },
+  {
+    "sourceId": "call_oJiwHz3oLvvkzkCIHONDL7ug|fc_0f95a28443550cc1016aa2b2c3d2b887d08b47e1ad392fb5c1",
+    "observedAt": "2026-09-10T13:38:30.408Z",
+    "boundary": "envelope",
+    "fields": [
+      "async"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "async": false
+    }
+  },
+  {
+    "sourceId": "call_pTuQ9HAw38CydeeQeY4YOquy|fc_09333ae17dc85f3b016aa57f8f15fc87d08db71bb80ac259be",
+    "observedAt": "2026-09-12T16:36:39.371Z",
+    "boundary": "workflow",
+    "call": {
+      "action": "execute",
+      "input": {
+        "workflowScript": "const reviewers = [{ id: \"retained\", task: \"fixture\" }];\nreturn Promise.all(reviewers.map((reviewer) => runs.run({ resume: reviewer.id, task: reviewer.task })));"
+      }
+    }
+  },
+  {
+    "sourceId": "call_pm7ZVvLxUiOql1jZByxCsgH9|fc_015f0b5969b4b3da016aa20c037d1887d0b747b48dbb781972",
+    "observedAt": "2026-09-10T01:47:06.435Z",
+    "boundary": "envelope",
+    "fields": [
+      "timeoutMs",
+      "maxOutputChars"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "timeoutMs": 900000,
+      "maxOutputChars": 30000
+    }
+  },
+  {
+    "sourceId": "call_pn9zs1JGlIsloLYZkJcPGji1|fc_0ba8a749b7aefa4c016aa4808ebe7887d0a213a2b66080545e",
+    "observedAt": "2026-09-11T22:28:40.055Z",
+    "boundary": "envelope",
+    "fields": [
+      "timeoutMs",
+      "label",
+      "spawnBudget",
+      "retainArtifacts",
+      "onFailure",
+      "share",
+      "tools"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "timeoutMs": 1200000,
+      "label": "<value>",
+      "spawnBudget": 2,
+      "retainArtifacts": true,
+      "onFailure": "<value>",
+      "share": false,
+      "tools": []
+    }
+  },
+  {
+    "sourceId": "call_saaUA1zHT4P2lWu9CKmnw5Ej|fc_0ba8a749b7aefa4c016aa4bb8ba90887d0a1e47cc311969a3a",
+    "observedAt": "2026-09-12T02:40:19.638Z",
+    "boundary": "action-fields",
+    "fields": [
+      "thinking"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {
+        "thinking": "high"
+      }
+    }
+  },
+  {
+    "sourceId": "call_snvk0Etsm2Rfz4oid1l15ozP|fc_0edc09ee3067164c016aa592b08cec87d090cb9e959500ddd8",
+    "observedAt": "2026-09-12T17:58:12.835Z",
+    "boundary": "action-fields",
+    "fields": [
+      "async"
+    ],
+    "call": {
+      "action": "resume",
+      "input": {
+        "async": false
+      }
+    }
+  },
+  {
+    "sourceId": "call_tCeuNjW8pBnrEV73xZE5R2XA|fc_0121fc5e1ca504ed016aa201b9b3d887d089b3b35fdc86c3c2",
+    "observedAt": "2026-09-10T01:03:37.346Z",
+    "boundary": "envelope",
+    "fields": [
+      "async"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "async": false
+    }
+  },
+  {
+    "sourceId": "call_tbYKuGNvaYkPn8mm0GfjBBYn|fc_0edc09ee3067164c016aa5c43f779c87d0879f969b3c8f2cbd",
+    "observedAt": "2026-09-12T21:29:50.315Z",
+    "boundary": "envelope",
+    "fields": [
+      "async",
+      "timeoutMs"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "async": false,
+      "timeoutMs": 1200000
+    }
+  },
+  {
+    "sourceId": "call_vkZlKUIYTqa34eKUnFboW6T8|fc_0a51dcf9edc7d1d7016aa1aebe94fc87d09658812c3f835265",
+    "observedAt": "2026-09-09T19:14:12.290Z",
+    "boundary": "workflow",
+    "call": {
+      "action": "execute",
+      "input": {
+        "workflowScript": "await runs.all([{ key: \"first\", agent: \"worker\", task: \"fixture\" }]);\nreturn runs.run({ agent: \"worker\", task: \"fixture\" });"
+      }
+    }
+  },
+  {
+    "sourceId": "call_zKtXBc0N80ABIqzrKfZkI9pm|fc_06450c4b697e4d3b016aa573274c3c87d09b3e20233c2b722e",
+    "observedAt": "2026-09-12T15:43:43.560Z",
+    "boundary": "envelope",
+    "fields": [
+      "timeoutMs"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "timeoutMs": 600000
+    }
+  },
+  {
+    "sourceId": "chatcmpl-tool-aa3686ce38803232",
+    "observedAt": "2026-09-10T20:14:45.121Z",
+    "boundary": "envelope",
+    "fields": [
+      "async",
+      "agent"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "async": "<value>",
+      "agent": "<value>"
+    }
+  },
+  {
+    "sourceId": "chatcmpl-tool-b7ad622dd88f7bc5",
+    "observedAt": "2026-09-10T20:14:45.121Z",
+    "boundary": "envelope",
+    "fields": [
+      "async",
+      "agent"
+    ],
+    "call": {
+      "action": "execute",
+      "input": {},
+      "async": "<value>",
+      "agent": "<value>"
+    }
+  }
+]

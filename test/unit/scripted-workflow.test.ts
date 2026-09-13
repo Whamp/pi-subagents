@@ -98,6 +98,64 @@ describe("scripted workflow runtime", () => {
 		assert.deepEqual(validateWorkflowScript(`return runs.run("same", { agent: selectedAgent });`), { ok: true, errors: [] });
 	});
 
+	it("rejects locally provable runs.run and runs.all call-shape mistakes", () => {
+		for (const [script, expected] of [
+			[`return runs.run({ key: "child", agent: "worker" });`, /runs\.run requires a key and params/],
+			[`return runs.run(42, { agent: "worker" });`, /runs\.run key must be a string/],
+			[`return runs.run("child", "worker");`, /runs\.run params must be an object/],
+			[`return runs.all({ key: "child", agent: "worker" });`, /runs\.all input must be an array/],
+			[`return runs.all([{ agent: "worker" }]);`, /runs\.all item 0 requires key/],
+			[`return runs.all(["worker"]);`, /runs\.all item 0 must be an object/],
+			[`const tasks = [{ agent: "worker" }];\nconst results = await runs.all(tasks);\nreturn results;`, /runs\.all item 0 requires key/],
+		] as const) {
+			const result = validateWorkflowScript(script);
+			assert.equal(result.ok, false, script);
+			assert.match(result.errors.map(({ message }) => message).join("\n"), expected, script);
+		}
+		for (const script of [
+			`return runs.run(dynamicKey, dynamicParams);`,
+			`return runs.all(dynamicItems);`,
+			`return runs.all([{ ...dynamicItem }]);`,
+			`const tasks = [{ agent: "worker" }];\nprepare(tasks);\nreturn runs.all(tasks);`,
+			`const args = ["child", { agent: "worker" }]; return runs.run(...args);`,
+			`const children = await runs.all([{ key: "first", agent: "worker" }]); { const children = { first: 123 }; emit(children.first); } return children;`,
+			`const children = await runs.all([{ key: "first", agent: "worker" }]); { const { children } = { children: { first: 123 } }; emit(children.first); } try { throw { first: 456 }; } catch (children) { emit(children.first); } return children;`,
+		]) assert.deepEqual(validateWorkflowScript(script), { ok: true, errors: [] }, script);
+	});
+
+	it("runs spread arguments and shadowed result bindings left to runtime validation", async () => {
+		for (const script of [
+			`const args = ["child", { agent: "worker" }]; return runs.run(...args);`,
+			`const children = await runs.all([{ key: "first", agent: "worker" }]); { const children = { first: 123 }; emit(children.first); } return children;`,
+			`const children = await runs.all([{ key: "first", agent: "worker" }]); { const { children } = { children: { first: 123 } }; emit(children.first); } try { throw { first: 456 }; } catch (children) { emit(children.first); } return children;`,
+		]) {
+			const result = await runWorkflowScript({
+				script,
+				async launch(key) { return { key, ok: true, output: "ok", artifactPaths: [] }; },
+				async status(key) { return { key, ok: true, output: "ok", artifactPaths: [] }; },
+			});
+			assert.equal(result.children.length, 1, script);
+		}
+	});
+
+	it("rejects a malformed later workflow call before launching an earlier child", async () => {
+		const launched: string[] = [];
+		await assert.rejects(
+			runWorkflowScript({
+				script: `await runs.run("early", { agent: "worker" });\nreturn runs.run({ key: "late", agent: "worker" });`,
+				async launch(key) {
+					launched.push(key);
+					return { key, ok: true, output: "unexpected", artifactPaths: [] };
+				},
+				async status(key) { return { key, ok: true, output: "unexpected", artifactPaths: [] }; },
+			}),
+			(error: unknown) => error instanceof WorkflowScriptError
+				&& /before child launch; no children launched/.test(error.message)
+				&& error.partial.children.length === 0,
+		);
+		assert.deepEqual(launched, []);
+	});
+
 	it("reports literal child baseRef policy errors with source locations offline", () => {
 		for (const [call, value] of [
 			["run", JSON.stringify("a".repeat(40))],
@@ -2012,8 +2070,7 @@ describe("scripted workflow runtime", () => {
 			(error: unknown) => error instanceof WorkflowScriptError
 				&& error.message.includes("does not support nested async functions")
 				&& error.message.includes("validation failed before child launch; no children launched")
-				&& error.message.includes("Parallel plus sequential rewrite")
-				&& error.message.includes("const [aResult] = await Promise.all([a])")
+				&& error.message.includes("Use top-level await, plain helper functions")
 				&& error.partial.children.length === 0,
 		);
 		assert.equal(launches, 0);

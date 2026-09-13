@@ -262,7 +262,6 @@ const SUBAGENT_CATALOG_OPERATIONS = {
       "agentContract",
       "acceptance",
       "timeoutMs",
-      "maxRuntimeMs",
       "toolBudget",
       "control",
     ],
@@ -387,14 +386,50 @@ export type SubagentCatalogParseResult =
 
 const catalogCallValidator = Compile(SubagentCatalogParams);
 const canonicalParamsValidator = Compile(SubagentParams);
+const CATALOG_ROOT_FIELDS = new Set(["action", "input"]);
 
-function validationMessages(errors: Iterable<{ message: string }>): string {
+function validationMessages(errors: Iterable<{ message: string; path?: string }>): string {
   return (
     [...errors]
       .slice(0, 4)
-      .map((error) => error.message)
+      .map(
+        (error) =>
+          `${error.path ? `${error.path.replace(/^\//, "").replaceAll("/", ".")}: ` : ""}${error.message}`,
+      )
       .join("; ") || "invalid input"
   );
+}
+
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- This is the parser for untrusted Pi tool arguments.
+function catalogEnvelopeError(call: unknown): string | undefined {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The boundary parser must identify the host value before TypeBox validation.
+  if (call && typeof call === "object" && !Array.isArray(call)) {
+    // SAFETY: the object and array checks above establish the only representation used before TypeBox validates its fields.
+    const envelope = call as { action?: unknown };
+    const rootFields = Object.keys(envelope).filter((field) => !CATALOG_ROOT_FIELDS.has(field));
+    if (rootFields.length > 0) {
+      return `Invalid subagent command root field(s): ${rootFields.join(", ")}. The root accepts only 'action' and optional 'input'. Move every operation field under 'input', for example {action:'execute',input:{agent:'scout',task:'...'}}.`;
+    }
+    if (
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Action discrimination is part of this untrusted boundary parser.
+      typeof envelope.action === "string" &&
+      envelope.action.trim() &&
+      !isSubagentCatalogAction(envelope.action)
+    ) {
+      return `Unknown subagent action '${envelope.action}'. Use {action:'help'} to list actions.`;
+    }
+  }
+  if (catalogCallValidator.Check(call)) return undefined;
+  return `Invalid subagent command: ${validationMessages(catalogCallValidator.Errors(call))}. The root contract is {action,input?}; put every operation field under input.`;
+}
+
+/** Validate raw tool arguments before the host schema replaces corrective catalog errors. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- This registered ToolDefinition hook receives untrusted host arguments.
+export function prepareSubagentCatalogArguments(call: unknown): SubagentCatalogCall {
+  const error = catalogEnvelopeError(call);
+  if (error) throw new Error(error);
+  // SAFETY: catalogEnvelopeError accepts only values checked by catalogCallValidator.
+  return call as SubagentCatalogCall;
 }
 
 function isSubagentCatalogAction(
@@ -403,37 +438,58 @@ function isSubagentCatalogAction(
   return Object.hasOwn(SUBAGENT_CATALOG_OPERATIONS, action);
 }
 
+function inappropriateFieldCorrection(action: string, fields: string[]): string {
+  if (action === "execute" && fields.includes("thinking"))
+    return "Select reasoning through the model suffix; thinking is not an execute field.";
+  if (action === "execute" && fields.includes("tools"))
+    return "Configure child tools on the selected agent; tools is not an execute field.";
+  if (action === "resume" && (fields.includes("async") || fields.includes("maxRuntimeMs")))
+    return "Omit async and maxRuntimeMs; resume always starts a detached revival, and timeoutMs is its supported invocation ceiling.";
+  if (action === "children.list") return "Use {action:'children.list'} without input filters.";
+  return `Use {action:'help',input:{topic:'contract:${action}'}} for the accepted fields.`;
+}
+
+type CatalogOperationInput = NonNullable<SubagentCatalogCall["input"]>;
+
+function canonicalInputCorrection(action: string, input: CatalogOperationInput): string {
+  if (action === "status" && Object.hasOwn(input, "lines"))
+    return "status.lines must be an integer from 1 through 500.";
+  if (action === "execute" && Object.hasOwn(input, "toolBudget"))
+    return "toolBudget requires {hard,soft?,block?}.";
+  if (Object.hasOwn(input, "preflight"))
+    return "preflight requires {version:1,lanes:[{key,...}],coverage?}.";
+  return `Use {action:'help',input:{topic:'contract:${action}'}} for the exact input contract.`;
+}
+
 /** Decode a host-boundary model call into the canonical executor request without granting authority. */
 export function parseSubagentCatalogCall(
   call: SubagentCatalogCallCandidate,
 ): SubagentCatalogParseResult {
-  if (!catalogCallValidator.Check(call)) {
+  const envelopeError = catalogEnvelopeError(call);
+  if (envelopeError) return { ok: false, error: envelopeError };
+  // SAFETY: catalogEnvelopeError accepted the complete catalog envelope.
+  const catalogCall = call as SubagentCatalogCall;
+  if (!isSubagentCatalogAction(catalogCall.action)) {
     return {
       ok: false,
-      error: `Invalid subagent command: ${validationMessages(catalogCallValidator.Errors(call))}`,
+      error: `Unknown subagent action '${catalogCall.action}'. Use {action:'help'} to list actions.`,
     };
   }
-  if (!isSubagentCatalogAction(call.action)) {
-    return {
-      ok: false,
-      error: `Unknown subagent action '${call.action}'. Use {action:'help'} to list actions.`,
-    };
-  }
-  const operation: SubagentCatalogOperation = SUBAGENT_CATALOG_OPERATIONS[call.action];
-  const input = call.input ?? {};
+  const operation: SubagentCatalogOperation = SUBAGENT_CATALOG_OPERATIONS[catalogCall.action];
+  const input = catalogCall.input ?? {};
   const allowedFields = new Set<string>(operation.fields);
   const inappropriateFields = Object.keys(input).filter((field) => !allowedFields.has(field));
   if (inappropriateFields.length > 0) {
     return {
       ok: false,
-      error: `Action '${call.action}' does not accept input field(s): ${inappropriateFields.join(", ")}.`,
+      error: `Action '${catalogCall.action}' does not accept input field(s): ${inappropriateFields.join(", ")}. ${inappropriateFieldCorrection(catalogCall.action, inappropriateFields)}`,
     };
   }
   const missingFields = (operation.required ?? []).filter((field) => !Object.hasOwn(input, field));
   if (missingFields.length > 0) {
     return {
       ok: false,
-      error: `Action '${call.action}' requires input field(s): ${missingFields.join(", ")}.`,
+      error: `Action '${catalogCall.action}' requires input field(s): ${missingFields.join(", ")}.`,
     };
   }
   const requiredAny = operation.requiredAny ?? [];
@@ -445,10 +501,10 @@ export function parseSubagentCatalogCall(
   ) {
     return {
       ok: false,
-      error: `Action '${call.action}' requires at least one input field from: ${requiredAny.join(", ")}.`,
+      error: `Action '${catalogCall.action}' requires at least one input field from: ${requiredAny.join(", ")}.`,
     };
   }
-  if (call.action === "help") {
+  if (catalogCall.action === "help") {
     const helpCandidate = { action: "guide", ...input };
     if (!canonicalParamsValidator.Check(helpCandidate)) {
       return {
@@ -461,11 +517,12 @@ export function parseSubagentCatalogCall(
     }
     return { ok: true, request: { kind: "help", topic: helpCandidate.topic } };
   }
-  const candidate = call.action === "execute" ? { ...input } : { ...input, action: call.action };
+  const candidate =
+    catalogCall.action === "execute" ? { ...input } : { ...input, action: catalogCall.action };
   if (!canonicalParamsValidator.Check(candidate)) {
     return {
       ok: false,
-      error: `Invalid input for action '${call.action}': ${validationMessages(canonicalParamsValidator.Errors(candidate))}`,
+      error: `Invalid input for action '${catalogCall.action}': ${validationMessages(canonicalParamsValidator.Errors(candidate))}. ${canonicalInputCorrection(catalogCall.action, input)}`,
     };
   }
   // SAFETY: TypeBox checked the complete canonical schema immediately above.
@@ -474,7 +531,7 @@ export function parseSubagentCatalogCall(
   if (!normalized.ok) {
     return { ok: false, error: normalized.error };
   }
-  return call.action === "execute"
+  return catalogCall.action === "execute"
     ? { ok: true, request: { kind: "execute", params: normalized.params } }
     : { ok: true, request: { kind: "management", params: normalized.params } };
 }
@@ -507,13 +564,13 @@ function operationInputHelp(action: keyof typeof SUBAGENT_CATALOG_OPERATIONS): s
 }
 
 const EXECUTE_HELP = `Execute
-Choose exactly one launch form in input: {agent,task?}, {workflowScript}, {workflowScriptPath}, or {workflow,args?}. Native child options are checked against the selected runner before launch. Discovery is advisory; launch rechecks the executable agent, model, context, capability ceiling, budgets, acceptance, output, and worktree contract. Omitted async keeps the configured default; set async:true when background execution matters. Named workflow args are data, never permits. Use help topic workflows before advanced orchestration and help topic contract:execute for every accepted field.`;
+The tool root is always {action,input?}; every operation field belongs under input. Choose exactly one launch form in input: {agent,task?}, {workflowScript}, {workflowScriptPath}, or {workflow,args?}. Native child options are checked against the selected runner before launch. Discovery is advisory; launch rechecks the executable agent, model, context, capability ceiling, budgets, acceptance, output, and worktree contract. Omitted async keeps the configured default; set async:true when background execution matters. thinking and tools are not execute fields; select reasoning through model and configure child tools on the agent. toolBudget requires {hard,soft?,block?}. preflight requires {version:1,lanes:[{key,...}],coverage?}. Named workflow args are data, never permits. Use help topic workflows before advanced orchestration and help topic contract:execute for every accepted field.`;
 
 const WORKFLOW_HELP = `Workflows
-workflowScript is a JavaScript statement body with explicit return and top-level await. Choose the primitive by effect: await runs.run(key,{agent,task,...}) for one child; await runs.all([{key,agent,task,...},...]) for parallel children; await runs.host(key,{kind:'command',command:'...'}) for explicitly requested host execution. Only a named extension-owned workflow can receive a private host permit. A caller-authored runs.host call is denied before dispatch; never delegate a substitute host command through runs.run. runs.all returns an ordered array, so inspect each result before dependent work. Sequence dependent steps by awaiting each result before the next launch and branch on awaited contents such as a reviewer's structuredOutput verdict instead of launching ahead. To read structuredOutput, set outputSchema on that runs.run child before launch. Successful returned results/output are terminal; summarize them without status polling. Use one stable key per result lane; a changed call under the same key fails. Set output on children for durable files and return outputReference, outputPathMapping, or artifactPaths; task filename prose is not an output declaration. Use worktree:true for concurrent writers. Raw scripts have no filesystem, shell, Pi tools, or host authority. Help grants nothing. Retained resume uses runs.run(newKey,{resume:runId,task:followUp}) without agent or gate.`;
+workflowScript is a JavaScript statement body with explicit return and top-level await. Use await runs.run("stable-key",{agent,task,...}) for one child. Use await runs.all([{key:"first",agent,task,...},{key:"second",agent,task,...}]) for parallel children. Object-form runs.run({key,...}), keyless runs.all items, and runs.all({key,...}) are invalid. Every child, including a later synthesis or review stage, counts toward maxSubagentSpawnsPerRun. Use await runs.host(key,{kind:'command',command:'...'}) for explicitly requested host execution. Only a named extension-owned workflow can receive a private host permit. A caller-authored runs.host call is denied before dispatch; never delegate a substitute host command through runs.run. runs.all returns an ordered array, so inspect each result before dependent work. Sequence dependent steps by awaiting each result before the next launch and branch on awaited contents such as a reviewer's structuredOutput verdict instead of launching ahead. To read structuredOutput, set outputSchema on that runs.run child before launch. Successful returned results/output are terminal; summarize them without status polling. Use one stable key per result lane; a changed call under the same key fails. Set output on children for durable files and return outputReference, outputPathMapping, or artifactPaths; task filename prose is not an output declaration. Use worktree:true for concurrent writers. Raw scripts have no filesystem, shell, Pi tools, or host authority. Help grants nothing. Retained resume uses runs.run(newKey,{resume:runId,task:followUp}) without agent or gate.`;
 
 const CONTROL_HELP = `Control
-status accepts optional id/runId/dir, view fleet|transcript, index, and lines 1..500. steer requires message plus id/runId/dir and optionally index or mode. resume requires message plus a retained target and keeps the stored child contract. stop targets an async run and optionally childId; interrupt targets foreground or async work. children.list reports resumability before resume. Stop cancels; it does not pause. External runner controls are rechecked. Control and help calls never grant workflow resource authority.`;
+status accepts optional id/runId/dir, view fleet|transcript, index, and lines 1..500. children.list takes no filters and reports the bounded retained-child list with resumability. steer requires message plus id/runId/dir and optionally index or mode. resume requires message plus a retained target; async and maxRuntimeMs are invalid. Resume always starts a detached revival, and timeoutMs can cap that follow-up invocation. toolBudget can limit the follow-up but cannot add tools to the retained child. stop targets an async run and optionally childId; interrupt targets foreground or async work. Stop cancels; it does not pause. External runner controls are rechecked. Control and help calls never grant workflow resource authority.`;
 
 /** Parse the catalog exposed to fanout-authorized children using the executor's mutation policy. */
 export function parseFanoutChildSubagentCatalogCall(
