@@ -108,6 +108,7 @@
     "@types/node": "24.13.3",
     "fast-check": "4.10.0",
     "oxlint": "1.80.0",
+    "oxlint-tsgolint": "7.0.2001",
     "typescript": "5.9.3",
     "@earendil-works/pi-coding-agent": "file:./test/fixtures/pi-coding-agent-shim"
   }
