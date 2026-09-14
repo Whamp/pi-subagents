@@ -1486,54 +1486,36 @@ function walkAst(node: unknown, visit: (node: AstNode) => void, includeNestedFun
 
 const WORKFLOW_NESTED_SCOPE_NODE_TYPES = new Set([
 	"ArrowFunctionExpression",
+	"BlockStatement",
+	"CatchClause",
 	"ClassDeclaration",
 	"ClassExpression",
+	"ForInStatement",
+	"ForOfStatement",
+	"ForStatement",
 	"FunctionDeclaration",
 	"FunctionExpression",
 	"StaticBlock",
+	"SwitchStatement",
 ]);
 
-function patternBindsName(pattern: unknown, name: string): boolean {
-	if (!astNode(pattern)) return false;
-	if (pattern.type === "Identifier") return pattern.name === name;
-	if (pattern.type === "RestElement") return patternBindsName(pattern.argument, name);
-	if (pattern.type === "AssignmentPattern") return patternBindsName(pattern.left, name);
-	if (pattern.type === "ArrayPattern" && Array.isArray(pattern.elements)) return pattern.elements.some((element) => patternBindsName(element, name));
-	if (pattern.type === "ObjectPattern" && Array.isArray(pattern.properties)) {
-		return pattern.properties.some((property) => astNode(property) && (property.type === "RestElement" ? patternBindsName(property.argument, name) : patternBindsName(property.value, name)));
+function walkAstInCurrentWorkflowScope(node: AstNode, visit: (node: AstNode) => void): void {
+	if (WORKFLOW_NESTED_SCOPE_NODE_TYPES.has(node.type)) {
+		return;
 	}
-	return false;
-}
-
-function declarationBindsName(node: unknown, name: string): boolean {
-	if (!astNode(node)) return false;
-	if (node.type === "VariableDeclaration" && node.kind !== "var" && Array.isArray(node.declarations)) {
-		return node.declarations.some((declaration) => astNode(declaration) && patternBindsName(declaration.id, name));
-	}
-	return (node.type === "FunctionDeclaration" || node.type === "ClassDeclaration") && patternBindsName(node.id, name);
-}
-
-function scopeBindsName(node: AstNode, name: string): boolean {
-	if (node.type === "BlockStatement" && Array.isArray(node.body)) return node.body.some((statement) => declarationBindsName(statement, name));
-	if (node.type === "CatchClause") return patternBindsName(node.param, name);
-	if ((node.type === "ForStatement" || node.type === "ForInStatement" || node.type === "ForOfStatement") && astNode(node.init ?? node.left)) {
-		return declarationBindsName(node.init ?? node.left, name);
-	}
-	if (node.type === "SwitchStatement" && Array.isArray(node.cases)) {
-		return node.cases.some((switchCase) => astNode(switchCase) && Array.isArray(switchCase.consequent) && switchCase.consequent.some((statement) => declarationBindsName(statement, name)));
-	}
-	return false;
-}
-
-function walkAstInCurrentWorkflowScope(node: AstNode, bindingName: string, visit: (node: AstNode) => void): void {
-	if (WORKFLOW_NESTED_SCOPE_NODE_TYPES.has(node.type) || scopeBindsName(node, bindingName)) return;
 	visit(node);
 	for (const [key, child] of Object.entries(node)) {
-		if (AST_LOCATION_KEYS.has(key)) continue;
+		if (AST_LOCATION_KEYS.has(key)) {
+			continue;
+		}
 		if (Array.isArray(child)) {
-			for (const item of child) if (astNode(item)) walkAstInCurrentWorkflowScope(item, bindingName, visit);
+			for (const item of child) {
+				if (astNode(item)) {
+					walkAstInCurrentWorkflowScope(item, visit);
+				}
+			}
 		} else if (astNode(child)) {
-			walkAstInCurrentWorkflowScope(child, bindingName, visit);
+			walkAstInCurrentWorkflowScope(child, visit);
 		}
 	}
 }
@@ -1603,197 +1585,6 @@ function finalStaticObjectProperty(node: AstNode, name: string): FinalStaticObje
 	return { known: true };
 }
 
-function resolveStaticArrayNode(node: AstNode, workflowBody: AstNode): AstNode | undefined {
-	if (node.type === "ArrayExpression") return node;
-	if (node.type !== "Identifier" || workflowBody.type !== "BlockStatement" || !Array.isArray(workflowBody.body) || typeof node.start !== "number") return undefined;
-	let initializer: AstNode | undefined;
-	let declarationEnd = -1;
-	for (const statement of workflowBody.body) {
-		if (!astNode(statement) || typeof statement.start !== "number" || statement.start >= node.start) break;
-		if (statement.type !== "VariableDeclaration" || statement.kind !== "const" || !Array.isArray(statement.declarations)) continue;
-		for (const declaration of statement.declarations) {
-			if (!astNode(declaration) || !astNode(declaration.id) || declaration.id.type !== "Identifier" || declaration.id.name !== node.name || !astNode(declaration.init) || declaration.init.type !== "ArrayExpression") continue;
-			initializer = declaration.init;
-			declarationEnd = typeof declaration.end === "number" ? declaration.end : statement.start;
-		}
-	}
-	if (!initializer) return undefined;
-	let usedBeforeCall = false;
-	walkAst(workflowBody, (candidate) => {
-		if (candidate.type !== "Identifier" || candidate.name !== node.name || typeof candidate.start !== "number") return;
-		if (candidate.start >= declarationEnd && candidate.start < node.start) usedBeforeCall = true;
-	});
-	return usedBeforeCall ? undefined : initializer;
-}
-
-function resolveStaticCallArguments(call: AstNode, workflowBody: AstNode): AstNode[] | undefined {
-	if (!Array.isArray(call.arguments)) return [];
-	const resolved: AstNode[] = [];
-	const appendArray = (array: AstNode): boolean => {
-		if (!Array.isArray(array.elements)) return false;
-		for (const element of array.elements) {
-			if (!astNode(element)) return false;
-			if (element.type === "SpreadElement") {
-				if (!astNode(element.argument)) return false;
-				const nested = resolveStaticArrayNode(element.argument, workflowBody);
-				if (!nested || !appendArray(nested)) return false;
-			} else {
-				resolved.push(element);
-			}
-		}
-		return true;
-	};
-	for (const argument of call.arguments) {
-		if (!astNode(argument)) return undefined;
-		if (argument.type !== "SpreadElement") {
-			resolved.push(argument);
-			continue;
-		}
-		if (!astNode(argument.argument)) return undefined;
-		const array = resolveStaticArrayNode(argument.argument, workflowBody);
-		if (!array || !appendArray(array)) return undefined;
-	}
-	return resolved;
-}
-
-interface StaticExpressionValue {
-	known: boolean;
-	value?: unknown;
-}
-
-function staticExpressionValue(node: AstNode): StaticExpressionValue {
-	if (node.type === "Literal" && node.regex === undefined && typeof node.bigint !== "string") return { known: true, value: node.value };
-	if (node.type === "Identifier" && node.name === "undefined") return { known: true, value: undefined };
-	const template = literalString(node);
-	if (template !== undefined) return { known: true, value: template };
-	if (node.type === "UnaryExpression" && astNode(node.argument)) {
-		const argument = staticExpressionValue(node.argument);
-		if (!argument.known) return { known: false };
-		if (node.operator === "!") return { known: true, value: !argument.value };
-		if (node.operator === "+" && typeof argument.value === "number") return { known: true, value: argument.value };
-		if (node.operator === "-" && typeof argument.value === "number") return { known: true, value: -argument.value };
-	}
-	if (node.type === "ArrayExpression" && Array.isArray(node.elements)) {
-		const values: unknown[] = [];
-		for (const element of node.elements) {
-			if (!astNode(element) || element.type === "SpreadElement") return { known: false };
-			const entry = staticExpressionValue(element);
-			if (!entry.known) return { known: false };
-			values.push(entry.value);
-		}
-		return { known: true, value: values };
-	}
-	if (node.type === "ObjectExpression" && Array.isArray(node.properties)) {
-		const entries: Array<[string, unknown]> = [];
-		for (const property of node.properties) {
-			if (!astNode(property)) return { known: false };
-			if (property.type === "SpreadElement") {
-				if (!astNode(property.argument)) return { known: false };
-				const spread = staticExpressionValue(property.argument);
-				if (!spread.known || !isRecord(spread.value)) return { known: false };
-				entries.push(...Object.entries(spread.value));
-				continue;
-			}
-			const key = staticPropertyKey(property);
-			if (property.type !== "Property" || property.kind !== "init" || key === undefined || !astNode(property.value)) return { known: false };
-			const entry = staticExpressionValue(property.value);
-			if (!entry.known) return { known: false };
-			entries.push([key, entry.value]);
-		}
-		return { known: true, value: Object.fromEntries(entries) };
-	}
-	return { known: false };
-}
-
-function validateKnownLaneMetadata(value: unknown, label: string, workflowKey: string | undefined): string | undefined {
-	if (value === undefined) return undefined;
-	if (!isRecord(value)) return `${label} must be a plain JSON object`;
-	const allowed = new Set(["version", "key", "mode", "sourceRef", "claims", "outputPaths"]);
-	const unknownFields = Object.keys(value).filter((field) => !allowed.has(field));
-	if (unknownFields.length > 0) return `${label} has unsupported fields: ${unknownFields.join(", ")}`;
-	if (value.version !== 1) return `${label}.version must be 1`;
-	if (typeof value.key !== "string" || !value.key.trim() || !KEY_PATTERN.test(value.key.trim())) return `${label}.key is invalid`;
-	if (workflowKey !== undefined && value.key.trim() !== workflowKey) return `${label}.key must match workflow key '${workflowKey}'`;
-	if (value.mode !== undefined && value.mode !== "mutation" && value.mode !== "review" && value.mode !== "scout" && value.mode !== "gate") return `${label}.mode is invalid`;
-	const bounded = (entry: unknown, maxBytes: number): boolean => typeof entry === "string" && Boolean(entry.trim()) && Buffer.byteLength(entry.trim(), "utf8") <= maxBytes && !/[\r\n\u0000]/.test(entry);
-	if (value.sourceRef !== undefined && !bounded(value.sourceRef, 128)) return `${label}.sourceRef is invalid`;
-	for (const [name, maxItems, maxLength] of [["claims", 20, 160], ["outputPaths", 10, 256]] as const) {
-		const entries = value[name];
-		if (entries !== undefined && (!Array.isArray(entries) || entries.length > maxItems || entries.some((entry) => !bounded(entry, maxLength)))) return `${label}.${name} is invalid`;
-	}
-	return undefined;
-}
-
-function validateKnownExtensionBindings(value: unknown, label: string): string | undefined {
-	if (value === undefined) return undefined;
-	if (!isRecord(value)) return `${label} extensionBindings must be a plain JSON object`;
-	const keys = Object.keys(value);
-	if (keys.length > 16) return `${label} extensionBindings supports at most 16 namespaces`;
-	const invalid = keys.find((key) => !/^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,62})\/[1-9][0-9]{0,8}$/.test(key));
-	if (invalid) return `${label} extensionBindings namespace '${invalid}' must use a package-like name followed by '/<positive-version>'`;
-	let propertyCount = 0;
-	let validationError: string | undefined;
-	const visit = (entry: unknown, depth: number): void => {
-		if (validationError || !entry || typeof entry !== "object") return;
-		if (depth > 16) {
-			validationError = `${label} extensionBindings exceeds the maximum nesting depth of 16`;
-			return;
-		}
-		for (const child of Array.isArray(entry) ? entry : Object.values(entry)) {
-			if (!Array.isArray(entry) && ++propertyCount > 256) {
-				validationError = `${label} extensionBindings exceeds 256 total properties`;
-				return;
-			}
-			visit(child, depth + 1);
-		}
-	};
-	visit(value, 0);
-	if (validationError) return validationError;
-	return Buffer.byteLength(stableJson(value), "utf8") > 16384 ? `${label} extensionBindings canonical JSON exceeds 16384 bytes` : undefined;
-}
-
-function validateKnownRunParams(paramsNode: AstNode, label: string, workflowKey?: string): WorkflowScriptValidationError[] {
-	if (paramsNode.type !== "ObjectExpression" || !Array.isArray(paramsNode.properties)) return [];
-	const evaluated = staticExpressionValue(paramsNode);
-	const params: Record<string, unknown> = evaluated.known && isRecord(evaluated.value) ? evaluated.value : {};
-	const relevantFields = ["worktree", "lane", "gate", "acceptance", "resume", "agent", "task", "extensionBindings"];
-	for (const field of relevantFields) {
-		if (Object.prototype.hasOwnProperty.call(params, field)) continue;
-		const property = finalStaticObjectProperty(paramsNode, field);
-		if (!property.known || !property.value) continue;
-		const value = staticExpressionValue(property.value);
-		if (value.known) params[field] = value.value;
-	}
-	const errors: WorkflowScriptValidationError[] = [];
-	const add = (message: string): void => errors.push({ message: `${message}.`, ...nodeLocation(paramsNode) });
-	const forbidden = new Set(["action", "workflowScript", "globalConcurrencyLimit", "maxSubagentSpawnsPerRun", "tasks", "chain", "parallel", "concurrency", "chainDir"]);
-	if (paramsNode.properties.some((property) => astNode(property) && property.type === "Property" && forbidden.has(staticPropertyKey(property) ?? ""))) add(`${label} accepts one child via { agent, task } and execution controls only`);
-	if (paramsNode.properties.some((property) => astNode(property) && property.type === "Property" && staticPropertyKey(property) === "clarify")) add(`${label} does not support clarify UI`);
-	if (params.worktree !== undefined && typeof params.worktree !== "boolean") add(`${label} worktree must be true or false`);
-	const laneError = validateKnownLaneMetadata(params.lane, `${label} lane`, workflowKey);
-	if (laneError) add(laneError);
-	if (params.gate !== undefined && (typeof params.gate !== "string" || !params.gate.trim())) add(`${label} gate must be a non-empty command string`);
-	if (params.gate !== undefined && params.acceptance !== undefined && params.acceptance !== false) add(`${label} gate cannot be combined with acceptance; use one gate command or acceptance.verify`);
-	if (params.gate !== undefined && params.resume !== undefined) add(`${label} gate is not supported with retained resume`);
-	if (params.extensionBindings !== undefined && params.resume !== undefined) add(`${label} extensionBindings is not supported with retained resume`);
-	if (params.resume !== undefined && typeof params.resume !== "string") {
-		if (!isRecord(params.resume)) add(`${label} resume must be a retained run id or keyed workflow receipt reference`);
-		else {
-			const fields = Object.keys(params.resume);
-			if (fields.some((field) => field !== "workflowRunId" && field !== "key" && field !== "latest")) add(`${label} keyed resume contains unsupported fields`);
-			if (typeof params.resume.workflowRunId !== "string" || !params.resume.workflowRunId.trim()) add(`${label} keyed resume workflowRunId must be non-empty`);
-			if (typeof params.resume.key !== "string" || !KEY_PATTERN.test(params.resume.key)) add(`${label} keyed resume key is invalid`);
-			if (params.resume.latest !== true) add(`${label} keyed resume requires latest: true`);
-		}
-	}
-	if (typeof params.resume === "string" && !params.resume.trim()) add(`${label} resume must be a non-empty retained run id`);
-	if (params.resume !== undefined && params.agent !== undefined) add(`${label} resume and agent are mutually exclusive`);
-	if (params.resume !== undefined && (typeof params.task !== "string" || !params.task.trim())) add(`${label} resume requires a non-empty task follow-up`);
-	const bindingsError = validateKnownExtensionBindings(params.extensionBindings, label);
-	if (bindingsError) add(bindingsError);
-	return errors;
-}
-
 function staticallyNonString(node: AstNode): boolean {
 	return node.type === "ObjectExpression" || node.type === "ArrayExpression" || node.type === "FunctionExpression" || node.type === "ArrowFunctionExpression" || (node.type === "Literal" && literalString(node) === undefined);
 }
@@ -1826,10 +1617,9 @@ function validateStaticBaseRef(params: AstNode, owner: string): WorkflowScriptVa
 	return [];
 }
 
-function directRunsAllKeys(call: AstNode, workflowBody: AstNode): Array<{ key: string; node: AstNode }> {
+function directRunsAllKeys(call: AstNode): Array<{ key: string; node: AstNode }> {
 	const args = Array.isArray(call.arguments) ? call.arguments : [];
-	const array = astNode(args[0]) ? resolveStaticArrayNode(args[0], workflowBody) : undefined;
-	const items = array && Array.isArray(array.elements) ? array.elements : [];
+	const items = astNode(args[0]) && args[0].type === "ArrayExpression" && Array.isArray(args[0].elements) ? args[0].elements : [];
 	return items.flatMap((item) => {
 		if (!astNode(item)) return [];
 		const keyProperty = finalStaticObjectProperty(item, "key");
@@ -1860,11 +1650,31 @@ function validateStaticRunsAllArray(array: AstNode): WorkflowScriptValidationErr
 			else if (key !== undefined && !KEY_PATTERN.test(key)) errors.push({ message: "runs.all item key must be 1-128 characters using letters, numbers, '.', '_' or '-', and start with a letter or number.", ...nodeLocation(keyProperty.value) });
 		}
 		errors.push(...validateStaticBaseRef(item, "runs.all item"));
-		errors.push(...validateKnownRunParams(item, `runs.all item ${index}`, literalString(keyProperty.value)));
 		const message = definitelyNonJson(item);
 		if (message) errors.push({ message: `runs.all item params are invalid: ${message}.`, ...nodeLocation(item) });
 	}
 	return errors;
+}
+
+function adjacentConstRunsAllArray(statements: unknown[], index: number): AstNode | undefined {
+	if (index < 1) return undefined;
+	const declaration = statements[index - 1];
+	const statement = statements[index];
+	if (!astNode(declaration) || !astNode(statement)) return undefined;
+	if (declaration.type !== "VariableDeclaration" || declaration.kind !== "const" || !Array.isArray(declaration.declarations) || declaration.declarations.length !== 1) return undefined;
+	const binding = declaration.declarations[0];
+	if (!astNode(binding) || !astNode(binding.id) || binding.id.type !== "Identifier" || !astNode(binding.init) || binding.init.type !== "ArrayExpression") return undefined;
+	let expression = statement.type === "ReturnStatement" && astNode(statement.argument)
+		? statement.argument
+		: statement.type === "ExpressionStatement" && astNode(statement.expression)
+			? statement.expression
+			: statement.type === "VariableDeclaration" && Array.isArray(statement.declarations) && statement.declarations.length === 1 && astNode(statement.declarations[0]) && astNode(statement.declarations[0].init)
+				? statement.declarations[0].init
+				: undefined;
+	if (expression?.type === "AwaitExpression" && astNode(expression.argument)) expression = expression.argument;
+	if (!directRunsCall(expression, "all")) return undefined;
+	const args = Array.isArray(expression.arguments) ? expression.arguments : [];
+	return astNode(args[0]) && args[0].type === "Identifier" && args[0].name === binding.id.name ? binding.init : undefined;
 }
 
 /** Parse a workflowScript and apply only rules that are decidable from its local syntax. */
@@ -1892,10 +1702,11 @@ export function validateWorkflowScript(script: string): WorkflowScriptValidation
 			errors.push({ message: "workflowScript does not support nested async functions. Use top-level await, plain helper functions that return runs.run(...), or explicit Promise chains.", ...nodeLocation(node) });
 		}
 		if (directRunsCall(node, "run")) {
-			const args = resolveStaticCallArguments(node, workflowBody);
-			if (args) {
-				const keyNode = args[0];
-				const paramsNode = args[1];
+			const args = Array.isArray(node.arguments) ? node.arguments : [];
+			const hasSpreadArgument = args.some((argument) => astNode(argument) && argument.type === "SpreadElement");
+			if (!hasSpreadArgument) {
+				const keyNode = astNode(args[0]) ? args[0] : undefined;
+				const paramsNode = astNode(args[1]) ? args[1] : undefined;
 				const key = literalString(keyNode);
 				if (!keyNode || !paramsNode) errors.push({ message: "runs.run requires a key and params. Use runs.run(\"stable-key\", {agent,task,...}).", ...nodeLocation(node) });
 				else {
@@ -1903,7 +1714,6 @@ export function validateWorkflowScript(script: string): WorkflowScriptValidation
 					else if (key !== undefined && !KEY_PATTERN.test(key)) errors.push({ message: "runs.run key must be 1-128 characters using letters, numbers, '.', '_' or '-', and start with a letter or number.", ...nodeLocation(keyNode) });
 					if (staticallyNonObject(paramsNode)) errors.push({ message: "runs.run params must be an object. Use runs.run(\"stable-key\", {agent,task,...}).", ...nodeLocation(paramsNode) });
 					errors.push(...validateStaticBaseRef(paramsNode, "runs.run"));
-					errors.push(...validateKnownRunParams(paramsNode, "runs.run", key));
 					const message = definitelyNonJson(paramsNode);
 					if (message) errors.push({ message: `runs.run params are invalid: ${message}.`, ...nodeLocation(paramsNode) });
 				}
@@ -1912,10 +1722,9 @@ export function validateWorkflowScript(script: string): WorkflowScriptValidation
 		if (directRunsCall(node, "all")) {
 			const args = Array.isArray(node.arguments) ? node.arguments : [];
 			const itemsNode = astNode(args[0]) ? args[0] : undefined;
-			const staticItemsNode = itemsNode ? resolveStaticArrayNode(itemsNode, workflowBody) : undefined;
 			if (!itemsNode) errors.push({ message: "runs.all requires an array of keyed child objects. Use runs.all([{key:\"stable-key\",agent,task,...}]).", ...nodeLocation(node) });
 			else if (staticallyNonArray(itemsNode)) errors.push({ message: "runs.all input must be an array. Use runs.all([{key:\"stable-key\",agent,task,...}]).", ...nodeLocation(itemsNode) });
-			else if (staticItemsNode) errors.push(...validateStaticRunsAllArray(staticItemsNode));
+			else errors.push(...validateStaticRunsAllArray(itemsNode));
 		}
 		if (directRunsCall(node, "host")) errors.push(...validateStaticHostCall(node));
 		const boundaryValue = node.type === "CallExpression" && astNode(node.callee) && node.callee.type === "Identifier" && node.callee.name === "emit" && Array.isArray(node.arguments) && astNode(node.arguments[0])
@@ -1937,12 +1746,14 @@ export function validateWorkflowScript(script: string): WorkflowScriptValidation
 
 	if (workflowBody.type === "BlockStatement" && Array.isArray(workflowBody.body)) {
 		for (let statementIndex = 0; statementIndex < workflowBody.body.length; statementIndex++) {
+			const adjacentArray = adjacentConstRunsAllArray(workflowBody.body, statementIndex);
+			if (adjacentArray) errors.push(...validateStaticRunsAllArray(adjacentArray));
 			const statement = workflowBody.body[statementIndex];
 			if (!astNode(statement) || statement.type !== "VariableDeclaration" || !Array.isArray(statement.declarations)) continue;
 			for (const declaration of statement.declarations) {
 				if (!astNode(declaration) || !astNode(declaration.id) || declaration.id.type !== "Identifier" || !astNode(declaration.init) || declaration.init.type !== "AwaitExpression" || !directRunsCall(declaration.init.argument, "all")) continue;
 				const name = declaration.id.name as string;
-				const keys = new Set(directRunsAllKeys(declaration.init.argument, workflowBody).map((entry) => entry.key));
+				const keys = new Set(directRunsAllKeys(declaration.init.argument).map((entry) => entry.key));
 				if (keys.size === 0) continue;
 				const args = Array.isArray(declaration.init.argument.arguments) ? declaration.init.argument.arguments : [];
 				const itemCount = astNode(args[0]) && args[0].type === "ArrayExpression" && Array.isArray(args[0].elements) ? args[0].elements.length : 0;
@@ -1951,7 +1762,7 @@ export function validateWorkflowScript(script: string): WorkflowScriptValidation
 					if (!astNode(later)) {
 						continue;
 					}
-					walkAstInCurrentWorkflowScope(later, name, (node) => {
+					walkAstInCurrentWorkflowScope(later, (node) => {
 						if (node.type !== "MemberExpression" || !astNode(node.object) || node.object.type !== "Identifier" || node.object.name !== name) return;
 						const property = node.computed === true ? literalString(node.property) : astNode(node.property) && node.property.type === "Identifier" ? node.property.name as string : undefined;
 						if (property && keys.has(property) && !(property in arrayResultShape)) errors.push({ message: `runs.all returns an ordered array; '${name}.${property}' is keyed access. Use an index, destructuring, or map(...).`, ...nodeLocation(node) });
