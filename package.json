@@ -106,6 +106,7 @@
     "@earendil-works/pi-tui": "0.81.0",
     "@oxlint/plugins": "1.80.0",
     "@types/node": "24.13.3",
+    "fast-check": "4.10.0",
     "oxlint": "1.80.0",
     "typescript": "5.9.3",
     "@earendil-works/pi-coding-agent": "file:./test/fixtures/pi-coding-agent-shim"
