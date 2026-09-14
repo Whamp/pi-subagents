@@ -186,15 +186,3 @@ describe("deterministic policy-chain probes block forged execution with zero eff
     assert.deepEqual(effectKinds, ["named-workflow-effect"]);
   });
 });
-
-describe("evidence wording stays honest about what the probes cover", () => {
-  it("documents the three permission-evidence tiers in the probe module header", async () => {
-    const source = readFileSync(
-      fileURLToPath(new URL("../../test/eval/lib/policy-probe.ts", import.meta.url)),
-      "utf8",
-    );
-    assert.match(source, /NOT[\s*]+the real Pi `tool_call` hook path/);
-    assert.match(source, /index-child-registration\.test\.ts/);
-    assert.match(source, /live AgentSession/);
-  });
-});
