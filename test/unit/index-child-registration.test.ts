@@ -21,7 +21,7 @@ function parentToolEnv(agentDir?: string): NodeJS.ProcessEnv {
 }
 
 describe("subagent extension child mode", () => {
-  void it("defers persistence when startup config expires a cached exclusion", () => {
+  it("defers persistence when startup config expires a cached exclusion", () => {
     const agentDir = fs.mkdtempSync(
       path.join(os.tmpdir(), "pi-subagents-model-exclusion-startup-"),
     );
@@ -77,7 +77,6 @@ describe("subagent extension child mode", () => {
         ],
         { cwd: projectRoot, env, stdio: "pipe" },
       );
-      // SAFETY: this test writes the exclusion fixture above and reads the same known shape here.
       const persisted = JSON.parse(fs.readFileSync(exclusionPath, "utf-8")).exclusions[0] as {
         expiresAt: number;
       };
@@ -87,7 +86,7 @@ describe("subagent extension child mode", () => {
     }
   });
 
-  void it("applies model exclusion TTL from extension config at registration", () => {
+  it("applies model exclusion TTL from extension config at registration", () => {
     const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-model-exclusion-config-"));
     const exclusionPath = path.join(agentDir, "model-exclusions.json");
     try {
@@ -150,7 +149,7 @@ describe("subagent extension child mode", () => {
     }
   });
 
-  void it("collapses tool detail before direct subagent tool execution", () => {
+  it("collapses tool detail before direct subagent tool execution", () => {
     const script = String.raw`
 			import registerSubagentExtension from "./index.ts";
 			const events = { on() { return () => {}; }, emit() {} };
@@ -202,7 +201,7 @@ describe("subagent extension child mode", () => {
     );
   });
 
-  void it("validates original and later-mutated catalog envelopes on the real registration seam", () => {
+  it("validates original and later-mutated catalog envelopes on the real registration seam", () => {
     const script = String.raw`
 			import registerSubagentExtension from "./index.ts";
 			const handlers = new Map();
@@ -282,7 +281,7 @@ describe("subagent extension child mode", () => {
     );
   });
 
-  void it("renders only the public workflow execution mode", () => {
+  it("renders only the public workflow execution mode", () => {
     const script = String.raw`
 			import registerSubagentExtension from "./index.ts";
 			const events = { on() { return () => {}; }, emit() {} };
@@ -325,7 +324,7 @@ describe("subagent extension child mode", () => {
     );
   });
 
-  void it("shows omitted workflow async as background even when asyncByDefault is false", () => {
+  it("shows omitted workflow async as background even when asyncByDefault is false", () => {
     const agentDir = fs.mkdtempSync(
       path.join(os.tmpdir(), "pi-subagents-workflow-manifest-config-"),
     );
@@ -377,7 +376,7 @@ describe("subagent extension child mode", () => {
     }
   });
 
-  void it("keeps registered tool errors actionable while successful results stay collapsed", () => {
+  it("keeps registered tool errors actionable while successful results stay collapsed", () => {
     const script = String.raw`
 			import registerSubagentExtension from "./index.ts";
 			const events = { on() { return () => {}; }, emit() {} };
@@ -421,7 +420,7 @@ describe("subagent extension child mode", () => {
     );
   });
 
-  void it("rejects blank action at the public executor boundary", () => {
+  it("rejects blank action at the public executor boundary", () => {
     const script = String.raw`
 			import assert from "node:assert/strict";
 			import registerSubagentExtension from "./index.ts";
@@ -454,7 +453,7 @@ describe("subagent extension child mode", () => {
     );
   });
 
-  void it("does not animate foreground results on a timer", () => {
+  it("does not animate foreground results on a timer", () => {
     const script = String.raw`
 			import registerSubagentExtension from "./index.ts";
 			const events = { on() { return () => {}; }, emit() {} };
@@ -505,7 +504,7 @@ describe("subagent extension child mode", () => {
     );
   });
 
-  void it("keeps summary inline tool display to one stable row for every supported state", () => {
+  it("keeps summary inline tool display to one stable row for every supported state", () => {
     const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-inline-display-config-"));
     try {
       const configDir = path.join(agentDir, "extensions", "subagent");
@@ -602,7 +601,7 @@ describe("subagent extension child mode", () => {
     }
   });
 
-  void it("uses configured main-window renderer spacing for call rows", () => {
+  it("uses configured main-window renderer spacing for call rows", () => {
     const agentDir = fs.mkdtempSync(
       path.join(os.tmpdir(), "pi-subagents-renderer-density-config-"),
     );
@@ -649,7 +648,7 @@ describe("subagent extension child mode", () => {
     }
   });
 
-  void it("uses configured main-window renderer density for slash results", () => {
+  it("uses configured main-window renderer density for slash results", () => {
     const agentDir = fs.mkdtempSync(
       path.join(os.tmpdir(), "pi-subagents-slash-renderer-density-config-"),
     );
@@ -704,7 +703,7 @@ describe("subagent extension child mode", () => {
     }
   });
 
-  void it("registers bg_wait and honors waitTool disabled config", () => {
+  it("registers bg_wait and honors waitTool disabled config", () => {
     const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-wait-tool-config-"));
     try {
       const configDir = path.join(agentDir, "extensions", "subagent");
@@ -758,14 +757,13 @@ describe("subagent extension child mode", () => {
         ],
         { cwd: projectRoot, env, encoding: "utf-8" },
       );
-      // SAFETY: the inline probe serializes a string result before this assertion.
       assert.match(JSON.parse(output) as string, /disabled/i);
     } finally {
       fs.rmSync(agentDir, { recursive: true, force: true });
     }
   });
 
-  void it("does not restore the async widget from tool results when asyncWidget is disabled", () => {
+  it("does not restore the async widget from tool results when asyncWidget is disabled", () => {
     const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-async-widget-config-"));
     try {
       const configDir = path.join(agentDir, "extensions", "subagent");
@@ -821,7 +819,7 @@ describe("subagent extension child mode", () => {
     }
   });
 
-  void it("shows active async work in the under-editor widget when FleetView is enabled", () => {
+  it("shows active async work in the under-editor widget when FleetView is enabled", () => {
     const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-async-widget-fleet-"));
     try {
       const configDir = path.join(agentDir, "extensions", "subagent");
@@ -877,7 +875,7 @@ describe("subagent extension child mode", () => {
     }
   });
 
-  void it("restores indexed active status after a management tool result", () => {
+  it("restores indexed active status after a management tool result", () => {
     const script = String.raw`
 			import * as fs from "node:fs";
 			import * as path from "node:path";
@@ -941,7 +939,7 @@ describe("subagent extension child mode", () => {
     );
   });
 
-  void it("registers pi-web liveness for the current session and releases it on shutdown", () => {
+  it("registers pi-web liveness for the current session and releases it on shutdown", () => {
     const script = String.raw`
 			import registerSubagentExtension from "./index.ts";
 			import { currentCompletionOwnerId } from "./src/shared/completion-owner.ts";
@@ -1014,7 +1012,7 @@ describe("subagent extension child mode", () => {
     );
   });
 
-  void it("keeps independent extension runtimes active in one process", () => {
+  it("keeps independent extension runtimes active in one process", () => {
     const script = String.raw`
 			import registerSubagentExtension from "./index.ts";
 			import { currentCompletionOwnerId } from "./src/shared/completion-owner.ts";
@@ -1111,7 +1109,7 @@ describe("subagent extension child mode", () => {
     );
   });
 
-  void it("keeps slash snapshots until the last independent runtime shuts down", () => {
+  it("keeps slash snapshots until the last independent runtime shuts down", () => {
     const script = String.raw`
 			import registerSubagentExtension from "./index.ts";
 			import { buildSlashInitialResult, getSlashRenderableSnapshot } from "./src/slash/slash-live-state.ts";
@@ -1167,7 +1165,7 @@ describe("subagent extension child mode", () => {
     );
   });
 
-  void it("disposes pending completion notifications on session shutdown", () => {
+  it("disposes pending completion notifications on session shutdown", () => {
     const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-notify-shutdown-"));
     const configDir = path.join(agentDir, "extensions", "subagent");
     fs.mkdirSync(configDir, { recursive: true });
@@ -1253,7 +1251,7 @@ describe("subagent extension child mode", () => {
     }
   });
 
-  void it("disposes pending completion notifications during runtime reload cleanup", () => {
+  it("disposes pending completion notifications during runtime reload cleanup", () => {
     const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-notify-reload-"));
     const configDir = path.join(agentDir, "extensions", "subagent");
     fs.mkdirSync(configDir, { recursive: true });
@@ -1376,7 +1374,7 @@ describe("subagent extension child mode", () => {
     }
   });
 
-  void it("ignores the current stale UI context during runtime reload cleanup", () => {
+  it("ignores the current stale UI context during runtime reload cleanup", () => {
     const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-stale-ui-reload-"));
     const configDir = path.join(agentDir, "extensions", "subagent");
     fs.mkdirSync(configDir, { recursive: true });
@@ -1435,7 +1433,7 @@ describe("subagent extension child mode", () => {
     }
   });
 
-  void it("claims the explicit predecessor session during session replacement", () => {
+  it("claims the explicit predecessor session during session replacement", () => {
     const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-session-transition-"));
     const configDir = path.join(agentDir, "extensions", "subagent");
     fs.mkdirSync(configDir, { recursive: true });
@@ -1502,7 +1500,7 @@ describe("subagent extension child mode", () => {
     }
   });
 
-  void it("registers the main watchdog command and renderer in parent mode", () => {
+  it("registers the main watchdog command and renderer in parent mode", () => {
     const script = String.raw`
 			import registerSubagentExtension from "./index.ts";
 			const events = { on() { return () => {}; }, emit() {} };
@@ -1545,7 +1543,7 @@ describe("subagent extension child mode", () => {
     );
   });
 
-  void it("returns before registering anything in a child-hosting process", () => {
+  it("returns before registering anything in a child-hosting process", () => {
     const script = String.raw`
 			import registerSubagentExtension from "./index.ts";
 			const calls = [];
@@ -1577,7 +1575,7 @@ describe("subagent extension child mode", () => {
     );
   });
 
-  void it("returns before registering anything when the child host flag is set after import", () => {
+  it("returns before registering anything when the child host flag is set after import", () => {
     const script = String.raw`
 			import registerSubagentExtension from "./index.ts";
 			import { SUBAGENT_CHILD_ENV } from "./src/runs/shared/child-runtime-config.ts";
@@ -1612,7 +1610,7 @@ describe("subagent extension child mode", () => {
     );
   });
 
-  void it("does not double-register the child-safe subagent tool when index and fanout-child both load", () => {
+  it("does not double-register the child-safe subagent tool when index and fanout-child both load", () => {
     const script = String.raw`
 			import registerSubagentExtension from "./index.ts";
 			import registerFanoutChildSubagentExtension from "./src/extension/fanout-child.ts";
@@ -1658,7 +1656,7 @@ describe("subagent extension child mode", () => {
     );
   });
 
-  void it("lets fanout children call read-only list but blocks mutating management actions", () => {
+  it("lets fanout children call read-only list but blocks mutating management actions", () => {
     const script = String.raw`
 			import assert from "node:assert/strict";
 			import registerFanoutChildSubagentExtension from "./src/extension/fanout-child.ts";

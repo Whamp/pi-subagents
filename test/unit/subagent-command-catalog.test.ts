@@ -9,12 +9,12 @@ import {
 } from "../../src/extension/subagent-command-catalog.ts";
 import { SUBAGENT_ACTIONS } from "../../src/shared/types.ts";
 
-void describe("subagent command catalog", () => {
-  void it("covers execute, help, and every canonical management action", () => {
+describe("subagent command catalog", () => {
+  it("covers execute, help, and every canonical management action", () => {
     assert.deepEqual(SUBAGENT_COMMAND_CATALOG_ACTIONS, ["execute", "help", ...SUBAGENT_ACTIONS]);
   });
 
-  void it("maps valid execute and management envelopes into canonical requests", () => {
+  it("maps valid execute and management envelopes into canonical requests", () => {
     assert.deepEqual(
       parseSubagentCatalogCall({
         action: "execute",
@@ -49,7 +49,7 @@ void describe("subagent command catalog", () => {
     );
   });
 
-  void it("rejects root fields with a corrective error before host schema validation", () => {
+  it("rejects root fields with a corrective error before host schema validation", () => {
     const valid = { action: "execute", input: { agent: "worker", async: true } } as const;
     assert.equal(prepareSubagentCatalogArguments(valid), valid);
     assert.throws(
@@ -62,7 +62,7 @@ void describe("subagent command catalog", () => {
     );
   });
 
-  void it("preserves named-resource input without creating authority fields", () => {
+  it("preserves named-resource input without creating authority fields", () => {
     const parsed = parseSubagentCatalogCall({
       action: "execute",
       input: { workflow: "run-ci", args: { command: "npm test" }, async: true },
@@ -81,7 +81,7 @@ void describe("subagent command catalog", () => {
     }
   });
 
-  void it("rejects unknown actions, root legacy fields, action injection, mixed modes, and private fields", () => {
+  it("rejects unknown actions, root legacy fields, action injection, mixed modes, and private fields", () => {
     const malformedCalls = [
       { action: "unknown", input: {} },
       { action: "execute", agent: "worker" },
@@ -96,7 +96,7 @@ void describe("subagent command catalog", () => {
     }
   });
 
-  void it("rejects inappropriate operation fields even when their canonical types are valid", () => {
+  it("rejects inappropriate operation fields even when their canonical types are valid", () => {
     assert.deepEqual(
       parseSubagentCatalogCall({ action: "status", input: { model: "openai/gpt-5" } }),
       {
@@ -131,7 +131,7 @@ void describe("subagent command catalog", () => {
     );
   });
 
-  void it("keeps raw scripts untrusted and help stateless", () => {
+  it("keeps raw scripts untrusted and help stateless", () => {
     const raw = parseSubagentCatalogCall({
       action: "execute",
       input: { workflowScript: "return runs.host('ci', {kind:'command',command:'npm test'})" },
@@ -146,7 +146,7 @@ void describe("subagent command catalog", () => {
     });
   });
 
-  void it("serves compact core help and detailed operation contracts", () => {
+  it("serves compact core help and detailed operation contracts", () => {
     const workflows = renderSubagentCatalogHelp("workflows").content[0];
     assert.equal(workflows?.type, "text");
     if (workflows?.type === "text") {
@@ -192,7 +192,7 @@ void describe("subagent command catalog", () => {
     }
   });
 
-  void it("adds corrective guidance for observed invalid fields and nested shapes", () => {
+  it("adds corrective guidance for observed invalid fields and nested shapes", () => {
     const cases = [
       [{ action: "execute", input: { agent: "worker", thinking: "high" } }, /model suffix/],
       [
@@ -228,7 +228,7 @@ void describe("subagent command catalog", () => {
     }
   });
 
-  void it("gives fanout children an explicitly restricted parser", () => {
+  it("gives fanout children an explicitly restricted parser", () => {
     assert.equal(
       parseFanoutChildSubagentCatalogCall({ action: "execute", input: { agent: "scout" } }).ok,
       true,

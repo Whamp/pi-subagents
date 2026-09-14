@@ -128,7 +128,7 @@ describe("watchdog turn delta formatter", () => {
 		assert.match(delta, /Final assistant stop: stop without tool call/);
 	});
 
-	void it("includes paired catalog launches for every launch selector", () => {
+	it("includes paired catalog launches for every launch selector", () => {
 		const calls = [
 			{ id: "direct", input: { agent: "worker", task: "implement" } },
 			{ id: "script", input: { workflowScript: "return [];" } },
@@ -147,7 +147,7 @@ describe("watchdog turn delta formatter", () => {
 		assert.match(activity, /workflow: review-and-fix/);
 	});
 
-	void it("excludes catalog nonlaunch and unpaired calls", () => {
+	it("excludes catalog nonlaunch and unpaired calls", () => {
 		const activity = formatWatchdogOrchestrationActivity({
 			type: "turn_end",
 			message: { content: [
@@ -168,7 +168,7 @@ describe("watchdog turn delta formatter", () => {
 		assert.equal(activity, "");
 	});
 
-	void it("preserves paired legacy flat launch recognition", () => {
+	it("preserves paired legacy flat launch recognition", () => {
 		const calls = [
 			{ type: "toolCall", id: "direct", name: "subagent", arguments: { agent: "worker", task: "implement" } },
 			{ type: "toolCall", id: "script", name: "subagent", arguments: { workflowScript: "return [];" } },

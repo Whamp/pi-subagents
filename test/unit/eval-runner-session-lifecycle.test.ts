@@ -23,8 +23,8 @@ function lifecycleSession(
   };
 }
 
-void describe("paired evaluator session lifecycle", () => {
-  void it("emits extension shutdown before disposing the session", async () => {
+describe("paired evaluator session lifecycle", () => {
+  it("emits extension shutdown before disposing the session", async () => {
     const events: string[] = [];
     const error = await shutdownEvalAgentSession(lifecycleSession(async () => undefined, events));
 
@@ -32,7 +32,7 @@ void describe("paired evaluator session lifecycle", () => {
     assert.deepEqual(events, ["session_shutdown:quit", "dispose"]);
   });
 
-  void it("still disposes and reports an extension shutdown failure", async () => {
+  it("still disposes and reports an extension shutdown failure", async () => {
     const events: string[] = [];
     const error = await shutdownEvalAgentSession(
       lifecycleSession(async () => {
@@ -44,7 +44,7 @@ void describe("paired evaluator session lifecycle", () => {
     assert.deepEqual(events, ["session_shutdown:quit", "dispose"]);
   });
 
-  void it("shuts down a created session when extension setup reports errors", async () => {
+  it("shuts down a created session when extension setup reports errors", async () => {
     const events: string[] = [];
     const session = {
       ...lifecycleSession(async () => undefined, events),

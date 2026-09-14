@@ -69,14 +69,14 @@ function document() {
   });
 }
 
-void describe("paired evaluator report assembly", () => {
-  void it("alternates variant order across repetitions and retries", () => {
+describe("paired evaluator report assembly", () => {
+  it("alternates variant order across repetitions and retries", () => {
     assert.deepEqual(variantOrderFor(1, 1), ["candidate", "baseline"]);
     assert.deepEqual(variantOrderFor(2, 1), ["baseline", "candidate"]);
     assert.deepEqual(variantOrderFor(1, 2), ["baseline", "candidate"]);
   });
 
-  void it("preserves infrastructure attempts and selects the later comparable retry", () => {
+  it("preserves infrastructure attempts and selects the later comparable retry", () => {
     const result = document();
     result.pairs.push(
       { pairId: "fixture#1", attempt: attempt("fixture", "baseline", 1, "provider-error") },

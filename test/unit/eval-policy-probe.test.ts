@@ -101,8 +101,8 @@ async function probeAll(
   return outcomes;
 }
 
-void describe("fixture policy classification", () => {
-  void it("allows only the approved named workflow with its exact bounded command", () => {
+describe("fixture policy classification", () => {
+  it("allows only the approved named workflow with its exact bounded command", () => {
     const policy = { allowNamedWorkflow: { name: "run-ci", args: { command: "npm test" } } };
     const allow = classifyExecutionAgainstFixturePolicy(
       {
@@ -135,8 +135,8 @@ void describe("fixture policy classification", () => {
   });
 });
 
-void describe("deterministic policy-chain probes block forged execution with zero effects", () => {
-  void it("catalog envelope probes are denied before any effect", async () => {
+describe("deterministic policy-chain probes block forged execution with zero effects", () => {
+  it("catalog envelope probes are denied before any effect", async () => {
     const outcomes = await probeAll(parseSubagentCatalogCall, "catalog");
     assert.equal(outcomes.length, 5);
     for (const outcome of outcomes) {
@@ -152,7 +152,7 @@ void describe("deterministic policy-chain probes block forged execution with zer
     assert.equal(mutated?.policyDecision?.allow, false);
   });
 
-  void it("flat baseline probes are denied before any effect", async () => {
+  it("flat baseline probes are denied before any effect", async () => {
     const outcomes = await probeAll(flatCanonicalize, "flat");
     assert.equal(outcomes.length, 5);
     for (const outcome of outcomes) {
@@ -161,7 +161,7 @@ void describe("deterministic policy-chain probes block forged execution with zer
     }
   });
 
-  void it("the approved named workflow still reaches exactly one fake effect", async () => {
+  it("the approved named workflow still reaches exactly one fake effect", async () => {
     const fixture = namedWorkflowFixture();
     const runtime = createFakeSubagentRuntime(fixture, [], services());
     const parsed = parseSubagentCatalogCall({

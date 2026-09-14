@@ -89,8 +89,8 @@ async function executeCall(runtime: FakeSubagentRuntime, call: VariantCall) {
   return { request, result, text: first !== undefined && first.type === "text" ? first.text : "" };
 }
 
-void describe("eval fake runtime literal action table", () => {
-  void it("serves discovery with and without capability rows", async () => {
+describe("eval fake runtime literal action table", () => {
+  it("serves discovery with and without capability rows", async () => {
     const runtime = runtimeFor(fixtureFrom(developmentSuite, "read-only-child"));
     const plain = await executeCall(runtime, { action: "list" });
     assert.equal(plain.result.isError, undefined);
@@ -107,7 +107,7 @@ void describe("eval fake runtime literal action table", () => {
     assert.ok(runtime.trace.some((entry) => entry.kind === "discovery" && entry.capabilities));
   });
 
-  void it("serves get, models, steer, stop, children.list, and resume from fixture data", async () => {
+  it("serves get, models, steer, stop, children.list, and resume from fixture data", async () => {
     const steerRuntime = runtimeFor(
       fixtureFrom(capabilitySuite, "capability-steer-live-run"),
       capabilitySuite.discovery.agents,
@@ -160,7 +160,7 @@ void describe("eval fake runtime literal action table", () => {
     assert.match(stale.text, /not resumable/);
   });
 
-  void it("serves held-out status runs with per-child transcript tails", async () => {
+  it("serves held-out status runs with per-child transcript tails", async () => {
     const runtime = runtimeFor(
       fixtureFrom(heldOutSuite, "held-out-transcript-tail"),
       heldOutSuite.discovery.agents,
@@ -187,7 +187,7 @@ void describe("eval fake runtime literal action table", () => {
     assert.equal(wrongIndex.result.isError, true);
   });
 
-  void it("applies child-scoped stop without widening to the run", async () => {
+  it("applies child-scoped stop without widening to the run", async () => {
     const runtime = runtimeFor(
       fixtureFrom(heldOutSuite, "held-out-child-scoped-stop"),
       heldOutSuite.discovery.agents,
@@ -241,7 +241,7 @@ void describe("eval fake runtime literal action table", () => {
     assert.equal(widenedPayload.runState, "stopped");
   });
 
-  void it("serves mission attach/show and schedule create without executing effects", async () => {
+  it("serves mission attach/show and schedule create without executing effects", async () => {
     const runtime = runtimeFor(
       fixtureFrom(capabilitySuite, "capability-mission-attach"),
       capabilitySuite.discovery.agents,
@@ -287,7 +287,7 @@ void describe("eval fake runtime literal action table", () => {
     );
   });
 
-  void it("validates scripts with the production validator and maps the nested-async diagnostic", async () => {
+  it("validates scripts with the production validator and maps the nested-async diagnostic", async () => {
     const runtime = runtimeFor(
       fixtureFrom(heldOutSuite, "held-out-offline-nested-async-validation"),
     );
@@ -312,7 +312,7 @@ void describe("eval fake runtime literal action table", () => {
     assert.equal(JSON.parse(valid.text).ok, true);
   });
 
-  void it("rejects children whose structured-output contract is not satisfied", async () => {
+  it("rejects children whose structured-output contract is not satisfied", async () => {
     const fixture = fixtureFrom(heldOutSuite, "held-out-foreground-structured-classifier");
     const outputSchema = {
       type: "object",
@@ -362,10 +362,10 @@ void describe("eval fake runtime literal action table", () => {
   });
 });
 
-void describe("eval launch-form-neutral infrastructure failure", () => {
+describe("eval launch-form-neutral infrastructure failure", () => {
   const fixture = fixtureFrom(developmentSuite, "infrastructure-failure");
 
-  void it("fails the only direct launch and records any second launch as prohibited", async () => {
+  it("fails the only direct launch and records any second launch as prohibited", async () => {
     const runtime = runtimeFor(fixture);
     const first = await executeCall(runtime, {
       action: "execute",
@@ -385,7 +385,7 @@ void describe("eval launch-form-neutral infrastructure failure", () => {
     assert.equal(kinds.includes("direct-child"), false);
   });
 
-  void it("fails a runs.run workflow launch without fabricating success", async () => {
+  it("fails a runs.run workflow launch without fabricating success", async () => {
     const runtime = runtimeFor(fixture);
     const executed = await executeCall(runtime, {
       action: "execute",
@@ -402,7 +402,7 @@ void describe("eval launch-form-neutral infrastructure failure", () => {
     assert.match(failed[0].message, /could not load its extension/);
   });
 
-  void it("marks runs.all launches with the batch form and still accepts exactly one failed attempt", async () => {
+  it("marks runs.all launches with the batch form and still accepts exactly one failed attempt", async () => {
     const runtime = runtimeFor(fixture);
     const executed = await executeCall(runtime, {
       action: "execute",
@@ -433,7 +433,7 @@ void describe("eval launch-form-neutral infrastructure failure", () => {
     assert.equal(prohibited[0].form, "workflow-all");
   });
 
-  void it("derives batch form per launch so a later runs.run never inherits the runs.all form", async () => {
+  it("derives batch form per launch so a later runs.run never inherits the runs.all form", async () => {
     const runtime = runtimeFor(fixtureFrom(developmentSuite, "read-only-child"));
     const executed = await executeCall(runtime, {
       action: "execute",
@@ -457,7 +457,7 @@ void describe("eval launch-form-neutral infrastructure failure", () => {
     assert.deepEqual(keys.sort(), ["a", "b", "c"]);
   });
 
-  void it("does not inject failure for fixtures without infrastructure failure config", async () => {
+  it("does not inject failure for fixtures without infrastructure failure config", async () => {
     const runtime = runtimeFor(fixtureFrom(developmentSuite, "read-only-child"));
     const executed = await executeCall(runtime, {
       action: "execute",
@@ -470,8 +470,8 @@ void describe("eval launch-form-neutral infrastructure failure", () => {
   });
 });
 
-void describe("eval fake runtime execution forms", () => {
-  void it("serves the configured named workflow only for the exact name", async () => {
+describe("eval fake runtime execution forms", () => {
+  it("serves the configured named workflow only for the exact name", async () => {
     const runtime = runtimeFor(fixtureFrom(developmentSuite, "named-workflow-policy"));
     const named = await executeCall(runtime, {
       action: "execute",
@@ -486,7 +486,7 @@ void describe("eval fake runtime execution forms", () => {
     assert.equal(runtime.trace.filter((entry) => entry.kind === "named-workflow-effect").length, 1);
   });
 
-  void it("records the caller's actual named-workflow arguments", async () => {
+  it("records the caller's actual named-workflow arguments", async () => {
     const runtime = runtimeFor(fixtureFrom(developmentSuite, "named-workflow-policy"));
     await executeCall(runtime, {
       action: "execute",
@@ -496,7 +496,7 @@ void describe("eval fake runtime execution forms", () => {
     assert.deepEqual(effect?.args, { command: "npm test", unexpected: true });
   });
 
-  void it("loads workflowScriptPath from the fixture file table and distinguishes it from inline scripts", async () => {
+  it("loads workflowScriptPath from the fixture file table and distinguishes it from inline scripts", async () => {
     const runtime = runtimeFor(
       fixtureFrom(capabilitySuite, "capability-workflow-script-file"),
       capabilitySuite.discovery.agents,
@@ -526,7 +526,7 @@ void describe("eval fake runtime execution forms", () => {
     assert.equal(missing.result.isError, true);
   });
 
-  void it("answers writer-review-fix child responses positionally without consulting model output", async () => {
+  it("answers writer-review-fix child responses positionally without consulting model output", async () => {
     const runtime = runtimeFor(fixtureFrom(developmentSuite, "writer-review-fix"));
     const executed = await executeCall(runtime, {
       action: "execute",
@@ -548,7 +548,7 @@ void describe("eval fake runtime execution forms", () => {
     assert.equal(reviewer?.resolvedContext, "fresh");
   });
 
-  void it("denies raw runs.host attempts with the provenance code before any dispatch", async () => {
+  it("denies raw runs.host attempts with the provenance code before any dispatch", async () => {
     const runtime = runtimeFor(
       fixtureFrom(heldOutSuite, "held-out-raw-host-denial"),
       heldOutSuite.discovery.agents,
@@ -575,7 +575,7 @@ void describe("eval fake runtime execution forms", () => {
     );
   });
 
-  void it("routes conditional structured workflows through the fake verdict table", async () => {
+  it("routes conditional structured workflows through the fake verdict table", async () => {
     const fixture = fixtureFrom(heldOutSuite, "held-out-conditional-structured-routing");
     const runtime = runtimeFor(fixture, fixture.discoveryAgents);
     const executed = await executeCall(runtime, {

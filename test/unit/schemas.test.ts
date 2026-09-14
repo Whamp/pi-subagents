@@ -190,8 +190,8 @@ try {
 	// The structural schema assertions below do not need the optional compiler package.
 }
 
-void describe("SubagentCatalogParams schema", { skip: !schemasAvailable ? "typebox not available" : undefined }, () => {
-	void it("publishes only the stateless action and input envelope", () => {
+describe("SubagentCatalogParams schema", { skip: !schemasAvailable ? "typebox not available" : undefined }, () => {
+	it("publishes only the stateless action and input envelope", () => {
 		assert.ok(SubagentCatalogParams);
 		assert.equal(SubagentCatalogParams.additionalProperties, false);
 		assert.deepEqual(SubagentCatalogParams.required, ["action"]);
@@ -206,7 +206,7 @@ void describe("SubagentCatalogParams schema", { skip: !schemasAvailable ? "typeb
 	});
 });
 
-void describe("SubagentParams canonical runtime schema", { skip: !schemasAvailable ? "typebox not available" : undefined }, () => {
+describe("SubagentParams canonical runtime schema", { skip: !schemasAvailable ? "typebox not available" : undefined }, () => {
 	it("includes context field and default precedence for fresh/fork execution mode", () => {
 		const contextSchema = SubagentParams?.properties?.context;
 		assert.ok(contextSchema, "context schema should exist");

@@ -349,10 +349,10 @@ Legacy top-level `chain`, `tasks`, `parallel`, `chainDir`, `/chain`, `/parallel`
 // { chain: [{ agent: "scout", task: "Scan" }, { agent: "worker", task: "Fix from {previous}" }] }
 
 // Current shape:
-{ action: "execute", input: { workflowScript: `
+{ workflowScript: `
   const scan = await runs.run("scan", { agent: "scout", task: "Scan" });
   return runs.run("fix", { agent: "worker", task: "Fix from: " + scan.output });
-` } }
+` }
 ```
 
 ```js
@@ -360,12 +360,12 @@ Legacy top-level `chain`, `tasks`, `parallel`, `chainDir`, `/chain`, `/parallel`
 // { tasks: [{ agent: "reviewer", task: "Review API" }, { agent: "reviewer", task: "Review UI" }] }
 
 // Current shape:
-{ action: "execute", input: { workflowScript: `
+{ workflowScript: `
   return runs.all([
     { key: "api", agent: "reviewer", task: "Review API" },
     { key: "ui", agent: "reviewer", task: "Review UI" }
   ]);
-` } }
+` }
 ```
 
 For long task text with Markdown fences or shell blocks, use quoted lines instead of a raw template literal:

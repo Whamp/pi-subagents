@@ -3173,7 +3173,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.deepEqual(result.details.workflow?.trace.filter((entry) => entry.state !== "started").map(({ state }) => state).sort(), ["completed", "failed"]);
 	});
 
-	void it("rejects keyed runs.all result access before siblings launch", { skip: !createSubagentExecutor ? "executor not importable" : undefined }, async () => {
+	it("rejects keyed runs.all result access before siblings launch", { skip: !createSubagentExecutor ? "executor not importable" : undefined }, async () => {
 		const executor = makeExecutor([makeAgent("echo")]);
 
 		const result = await executor.execute(

@@ -14,8 +14,8 @@ function temporaryDirectory(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
 
-void describe("paired evaluator variant roots", () => {
-  void it("reports every missing file for the selected variant", () => {
+describe("paired evaluator variant roots", () => {
+  it("reports every missing file for the selected variant", () => {
     const root = temporaryDirectory("catalog-eval-variant-");
     const error = variantRootError(root, "catalog");
     assert.notEqual(error, null);
@@ -24,7 +24,7 @@ void describe("paired evaluator variant roots", () => {
     }
   });
 
-  void it("accepts a variant root only after all required files exist", () => {
+  it("accepts a variant root only after all required files exist", () => {
     const root = temporaryDirectory("catalog-eval-complete-variant-");
     for (const relative of requiredVariantFiles("baseline")) {
       const file = path.join(root, relative);
@@ -34,7 +34,7 @@ void describe("paired evaluator variant roots", () => {
     assert.equal(variantRootError(root, "baseline"), null);
   });
 
-  void it("resolves only an existing production SDK entry", () => {
+  it("resolves only an existing production SDK entry", () => {
     const root = temporaryDirectory("catalog-eval-sdk-");
     const entry = path.join(root, "dist", "index.js");
     fs.mkdirSync(path.dirname(entry), { recursive: true });

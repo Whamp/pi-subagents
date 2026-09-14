@@ -98,7 +98,7 @@ describe("scripted workflow runtime", () => {
 		assert.deepEqual(validateWorkflowScript(`return runs.run("same", { agent: selectedAgent });`), { ok: true, errors: [] });
 	});
 
-	void it("rejects locally provable runs.run and runs.all call-shape mistakes", () => {
+	it("rejects locally provable runs.run and runs.all call-shape mistakes", () => {
 		for (const [script, expected] of [
 			[`return runs.run({ key: "child", agent: "worker" });`, /runs\.run requires a key and params/],
 			[`return runs.run(42, { agent: "worker" });`, /runs\.run key must be a string/],
@@ -123,7 +123,7 @@ describe("scripted workflow runtime", () => {
 		]) assert.deepEqual(validateWorkflowScript(script), { ok: true, errors: [] }, script);
 	});
 
-	void it("runs spread arguments and shadowed result bindings left to runtime validation", async () => {
+	it("runs spread arguments and shadowed result bindings left to runtime validation", async () => {
 		for (const script of [
 			`const args = ["child", { agent: "worker" }]; return runs.run(...args);`,
 			`const children = await runs.all([{ key: "first", agent: "worker" }]); { const children = { first: 123 }; emit(children.first); } return children;`,
@@ -138,7 +138,7 @@ describe("scripted workflow runtime", () => {
 		}
 	});
 
-	void it("rejects a malformed later workflow call before launching an earlier child", async () => {
+	it("rejects a malformed later workflow call before launching an earlier child", async () => {
 		const launched: string[] = [];
 		await assert.rejects(
 			runWorkflowScript({
@@ -149,7 +149,6 @@ describe("scripted workflow runtime", () => {
 				},
 				async status(key) { return { key, ok: true, output: "unexpected", artifactPaths: [] }; },
 			}),
-			// oxlint-disable-next-line anti-slop/no-unknown-parameters -- assert.rejects supplies an untrusted rejection value.
 			(error: unknown) => error instanceof WorkflowScriptError
 				&& /before child launch; no children launched/.test(error.message)
 				&& error.partial.children.length === 0,

@@ -7,12 +7,10 @@ import type { Static } from "typebox";
 import { SUBAGENT_ACTIONS } from "../shared/types.ts";
 
 function keepTopLevelParameterDescriptions<T>(schema: T): T {
-  // SAFETY: pruning clones the schema and removes only nested description metadata.
   return pruneNestedDescriptions(schema, []) as T;
 }
 
 function pruneNestedDescriptions(value: unknown, path: string[]): unknown {
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This recursive schema-cloning boundary must distinguish primitive leaves from schema objects.
   if (!value || typeof value !== "object") {
     return value;
   }
@@ -27,7 +25,6 @@ function pruneNestedDescriptions(value: unknown, path: string[]): unknown {
       continue;
     }
     if ("value" in descriptor) {
-      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Reflect.ownKeys returns string and symbol keys; only string keys belong in schema paths.
       const nextPath = typeof key === "string" ? [...path, key] : path;
       descriptor.value = pruneNestedDescriptions(descriptor.value, nextPath);
     }

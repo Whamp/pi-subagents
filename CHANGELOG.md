@@ -13,8 +13,6 @@
 - Document task-derived behavior labels for workflow launches in the built-in pi-subagents skill, including reviews and retained follow-ups.
 
 ### Fixed
-- Reject statically decidable malformed direct `runs.run` and `runs.all` calls before any child launch; dynamic and indirect forms remain runtime-validated.
-- Give unavailable explicit models corrective selector guidance, and classify a standalone `No code changes` instruction as read-only intent.
 - Prevent stale final-drain timers from aborting resumed native foreground and background child work. Thanks to [@harche](https://github.com/harche) for #2025.
 - Avoid requiring chord aliases on pre-0.85 Pi hosts while keeping required host runtime aliases fail-closed (#2026). Thanks to [@samuela](https://github.com/samuela).
 - Invoke Worktrunk through `git wt` on Windows to avoid Windows Terminal's conflicting `wt.exe` alias. Thanks to [@Zethu5](https://github.com/Zethu5) for #2033.

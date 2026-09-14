@@ -36,8 +36,8 @@ function escapePattern(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-void describe("observed post-catalog failure replays", () => {
-  void it("keeps the frozen corpus complete and source-addressable", () => {
+describe("observed post-catalog failure replays", () => {
+  it("keeps the frozen corpus complete and source-addressable", () => {
     assert.equal(fixtures.length, 51);
     assert.equal(fixtures.filter(({ boundary }) => boundary === "envelope").length, 20);
     assert.equal(fixtures.filter(({ boundary }) => boundary === "action-fields").length, 13);
@@ -50,7 +50,7 @@ void describe("observed post-catalog failure replays", () => {
     }
   });
 
-  void it("rejects every observed envelope, action-field, and canonical-input shape", () => {
+  it("rejects every observed envelope, action-field, and canonical-input shape", () => {
     for (const fixture of fixtures) {
       if (fixture.boundary === "envelope") {
         const fields = fixture.fields ?? [];
@@ -71,24 +71,21 @@ void describe("observed post-catalog failure replays", () => {
     }
   });
 
-  void it("keeps observed invalid schedule delays rejected after catalog parsing", () => {
+  it("keeps observed invalid schedule delays rejected after catalog parsing", () => {
     for (const fixture of fixtures.filter(({ boundary }) => boundary === "schedule-time")) {
       const parsed = parseSubagentCatalogCall(prepareSubagentCatalogArguments(fixture.call));
       assert.equal(parsed.ok, true, fixture.sourceId);
-      // SAFETY: schedule-time fixtures are frozen above and this branch selects their string `at` field.
-      const at = fixture.call.input?.at as string;
       assert.throws(
-        () => parseScheduledRunTime(at, 0),
+        () => parseScheduledRunTime(String(fixture.call.input?.at), 0),
         /Use a one-shot delay such as "\+10m" or an ISO timestamp with timezone/,
         fixture.sourceId,
       );
     }
   });
 
-  void it("rejects all five observed workflow shapes before any child launch", async () => {
+  it("rejects all five observed workflow shapes before any child launch", async () => {
     for (const fixture of fixtures.filter(({ boundary }) => boundary === "workflow")) {
-      // SAFETY: workflow fixtures are frozen above and this branch selects their string workflow script.
-      const script = fixture.call.input?.workflowScript as string;
+      const script = String(fixture.call.input?.workflowScript);
       assert.equal(validateWorkflowScript(script).ok, false, fixture.sourceId);
       const launched: string[] = [];
       await assert.rejects(
