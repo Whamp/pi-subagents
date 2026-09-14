@@ -123,7 +123,7 @@ describe("scripted workflow runtime", () => {
 		]) assert.deepEqual(validateWorkflowScript(script), { ok: true, errors: [] }, script);
 	});
 
-	it("runs spread arguments and shadowed result bindings left to runtime validation", async () => {
+	it("runs supported spread arguments and shadowed result bindings", async () => {
 		for (const script of [
 			`const args = ["child", { agent: "worker" }]; return runs.run(...args);`,
 			`const children = await runs.all([{ key: "first", agent: "worker" }]); { const children = { first: 123 }; emit(children.first); } return children;`,
@@ -138,22 +138,31 @@ describe("scripted workflow runtime", () => {
 		}
 	});
 
-	it("rejects a malformed later workflow call before launching an earlier child", async () => {
-		const launched: string[] = [];
-		await assert.rejects(
-			runWorkflowScript({
-				script: `await runs.run("early", { agent: "worker" });\nreturn runs.run({ key: "late", agent: "worker" });`,
-				async launch(key) {
-					launched.push(key);
-					return { key, ok: true, output: "unexpected", artifactPaths: [] };
-				},
-				async status(key) { return { key, ok: true, output: "unexpected", artifactPaths: [] }; },
-			}),
-			(error: unknown) => error instanceof WorkflowScriptError
-				&& /before child launch; no children launched/.test(error.message)
-				&& error.partial.children.length === 0,
-		);
-		assert.deepEqual(launched, []);
+	it("rejects every statically malformed workflow before launching a child", async () => {
+		for (const script of [
+			`await runs.run("early", { agent: "worker" });\nreturn runs.run({ key: "late", agent: "worker" });`,
+			`const tasks = [{ agent: "worker" }];\nawait runs.run("early", { agent: "worker" });\nreturn runs.all(tasks);`,
+			`await runs.run("early", { agent: "worker" });\nreturn runs.run(...[42, { agent: "worker" }]);`,
+			`await runs.run("early", { agent: "worker" });\nreturn runs.run("late", { agent: "worker", worktree: "yes" });`,
+			`const results = await runs.all([{ key: "first", agent: "worker" }]);\nif (true) { return results.first; }\nreturn results;`,
+		]) {
+			const launched: string[] = [];
+			await assert.rejects(
+				runWorkflowScript({
+					script,
+					async launch(key) {
+						launched.push(key);
+						return { key, ok: true, output: "unexpected", artifactPaths: [] };
+					},
+					async status(key) { return { key, ok: true, output: "unexpected", artifactPaths: [] }; },
+				}),
+				(error: unknown) => error instanceof WorkflowScriptError
+					&& /before child launch; no children launched/.test(error.message)
+					&& error.partial.children.length === 0,
+				script,
+			);
+			assert.deepEqual(launched, [], script);
+		}
 	});
 
 	it("reports literal child baseRef policy errors with source locations offline", () => {
