@@ -64,8 +64,8 @@ function malformedWorkflowCall(kind: MalformedWorkflowKind, key: string, task: s
   }
 }
 
-describe("subagent catalog generated properties", () => {
-  it("preserves every valid catalog envelope by reference", () => {
+void describe("subagent catalog generated properties", () => {
+  void it("preserves every valid catalog envelope by reference", () => {
     fc.assert(
       fc.property(catalogEnvelopeArbitrary, (call) => {
         assert.equal(prepareSubagentCatalogArguments(call), call);
@@ -74,7 +74,7 @@ describe("subagent catalog generated properties", () => {
     );
   });
 
-  it("rejects and names every additional root field", () => {
+  void it("rejects and names every additional root field", () => {
     fc.assert(
       fc.property(
         catalogEnvelopeArbitrary,
@@ -93,9 +93,9 @@ describe("subagent catalog generated properties", () => {
   });
 });
 
-describe("workflow validation generated properties", () => {
+void describe("workflow validation generated properties", () => {
   for (const malformedKind of MALFORMED_WORKFLOW_KINDS) {
-    it(`rejects ${malformedKind} before an earlier child can launch`, async () => {
+    void it(`rejects ${malformedKind} before an earlier child can launch`, async () => {
       await fc.assert(
         fc.asyncProperty(workflowKeyArbitrary, workflowTaskArbitrary, async (key, task) => {
           const firstKey = `first-${key}`;
@@ -135,7 +135,7 @@ describe("workflow validation generated properties", () => {
     });
   }
 
-  it("accepts supported spread-form runs.run calls", () => {
+  void it("accepts supported spread-form runs.run calls", () => {
     fc.assert(
       fc.property(workflowKeyArbitrary, workflowTaskArbitrary, (key, task) => {
         const script = `const args=[${JSON.stringify(key)},{agent:"worker",task:${JSON.stringify(task)}}]; return await runs.run(...args);`;
@@ -145,7 +145,7 @@ describe("workflow validation generated properties", () => {
     );
   });
 
-  it("accepts nested bindings that shadow a runs.all result", () => {
+  void it("accepts nested bindings that shadow a runs.all result", () => {
     fc.assert(
       fc.property(propertyNameWorkflowKeyArbitrary, workflowTaskArbitrary, (key, task) => {
         const script = `const children=await runs.all([{key:${JSON.stringify(key)},agent:"worker",task:${JSON.stringify(task)}}]); { const {children}= {children:{${key}:"inner"}}; children.${key}; } return children[0];`;
@@ -155,7 +155,7 @@ describe("workflow validation generated properties", () => {
     );
   });
 
-  it("rejects key-style access to ordered runs.all results", () => {
+  void it("rejects key-style access to ordered runs.all results", () => {
     fc.assert(
       fc.property(propertyNameWorkflowKeyArbitrary, workflowTaskArbitrary, (key, task) => {
         const script = `const children=await runs.all([{key:${JSON.stringify(key)},agent:"worker",task:${JSON.stringify(task)}}]); return children.${key};`;
