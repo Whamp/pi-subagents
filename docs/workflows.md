@@ -108,6 +108,8 @@ These controls are opt-in. Avoid tight hard budgets for mutation-capable workers
 
 The result is `{ ok, errors }`. Invalid scripts return a tool error and include line and column data when available. Validation checks syntax, portable nested-async rules, literal `runs.run` and `runs.all` keys and child `baseRef` values, duplicate literal keys in one `runs.all` group, direct keyed access to a known `runs.all` result, and statically clear non-JSON boundary values. Dynamic keys and other runtime-only values are accepted without a warning. Validation does not discover agents, launch children, or create run artifacts.
 
+Static validation is syntax-bounded, not flow- or binding-sensitive. Indirect forms—including non-adjacent identifier-backed arrays, array or object spreads, reassigned result variables, shadowed `runs` identifiers, and keyed access inside nested functions—remain runtime-validated. If one appears after a child launch, that earlier child is not rolled back. Use direct literal calls when validation must fail before any launch.
+
 ```js
 subagent({
  action: "execute",
