@@ -9,8 +9,8 @@ function requiredArguments(root: string): string[] {
   return ["--baseline-root", root, "--pi-sdk", root, "--model", "provider/model"];
 }
 
-describe("paired evaluator provider extension options", () => {
-  it("preserves repeated explicit provider extension files", () => {
+void describe("paired evaluator provider extension options", () => {
+  void it("preserves repeated explicit provider extension files", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "catalog-eval-options-"));
     const first = path.join(root, "first-provider.js");
     const second = path.join(root, "second-provider.js");
@@ -27,7 +27,7 @@ describe("paired evaluator provider extension options", () => {
     assert.deepEqual(parsed.options?.providerExtensions, [first, second]);
   });
 
-  it("rejects a provider extension path that is not a file", () => {
+  void it("rejects a provider extension path that is not a file", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "catalog-eval-options-missing-"));
     const missing = path.join(root, "missing-provider.js");
 

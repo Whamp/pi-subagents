@@ -102,8 +102,8 @@ function runHookProbeScript(agentDir: string): HookProbeReport {
   return JSON.parse(output) as HookProbeReport;
 }
 
-describe("registration-hook path blocks eval probe inputs before effects", () => {
-  it("blocks forged permits, provenance, and mutated envelopes on the real registered hook", () => {
+void describe("registration-hook path blocks eval probe inputs before effects", () => {
+  void it("blocks forged permits, provenance, and mutated envelopes on the real registered hook", () => {
     const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-eval-hook-"));
     const report = runHookProbeScript(agentDir);
     for (const call of report.blockedCalls) {
@@ -113,7 +113,7 @@ describe("registration-hook path blocks eval probe inputs before effects", () =>
     assert.equal(report.executorInvocations, 0);
   });
 
-  it("lets a raw host script pass the hook so the fixture policy chain stays the denying tier", () => {
+  void it("lets a raw host script pass the hook so the fixture policy chain stays the denying tier", () => {
     const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-eval-hook-raw-"));
     const report = runHookProbeScript(agentDir);
     assert.equal(report.allowedRawScript, true);

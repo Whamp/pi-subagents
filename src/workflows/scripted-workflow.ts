@@ -1752,20 +1752,22 @@ export function validateWorkflowScript(script: string): WorkflowScriptValidation
 			if (!astNode(statement) || statement.type !== "VariableDeclaration" || !Array.isArray(statement.declarations)) continue;
 			for (const declaration of statement.declarations) {
 				if (!astNode(declaration) || !astNode(declaration.id) || declaration.id.type !== "Identifier" || !astNode(declaration.init) || declaration.init.type !== "AwaitExpression" || !directRunsCall(declaration.init.argument, "all")) continue;
+				// SAFETY: astNode plus the Identifier check above establishes Acorn's string identifier name.
 				const name = declaration.id.name as string;
 				const keys = new Set(directRunsAllKeys(declaration.init.argument).map((entry) => entry.key));
 				if (keys.size === 0) continue;
 				const args = Array.isArray(declaration.init.argument.arguments) ? declaration.init.argument.arguments : [];
 				const itemCount = astNode(args[0]) && args[0].type === "ArrayExpression" && Array.isArray(args[0].elements) ? args[0].elements.length : 0;
-				const arrayResultShape = Array.from({ length: itemCount });
+				const arrayResultIndexes = Array.from({ length: itemCount });
 				for (const later of workflowBody.body.slice(statementIndex + 1)) {
 					if (!astNode(later)) {
 						continue;
 					}
 					walkAstInCurrentWorkflowScope(later, (node) => {
 						if (node.type !== "MemberExpression" || !astNode(node.object) || node.object.type !== "Identifier" || node.object.name !== name) return;
+						// SAFETY: astNode plus the Identifier check establishes Acorn's string property name.
 						const property = node.computed === true ? literalString(node.property) : astNode(node.property) && node.property.type === "Identifier" ? node.property.name as string : undefined;
-						if (property && keys.has(property) && !(property in arrayResultShape)) errors.push({ message: `runs.all returns an ordered array; '${name}.${property}' is keyed access. Use an index, destructuring, or map(...).`, ...nodeLocation(node) });
+						if (property && keys.has(property) && !(property in arrayResultIndexes)) errors.push({ message: `runs.all returns an ordered array; '${name}.${property}' is keyed access. Use an index, destructuring, or map(...).`, ...nodeLocation(node) });
 					});
 				}
 			}

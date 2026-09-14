@@ -134,7 +134,9 @@ function formatResumeGuidance(runId: string | undefined, children: Array<{ agent
 	const resumableWorkflowChildren = workflowChildren.filter(({ child }) => !(child.status === "paused" && child.activityState === "needs_attention"));
 	if (workflowChildren.length > 0) {
 		return [
+			// oxlint-disable-next-line anti-slop/no-runtime-typeof, typescript/restrict-template-expressions -- Persisted child metadata is narrowed inline before rendering.
 			...supervisorDetachedWorkflowChildren.map(({ child }) => `Recovery workflow child${typeof child.workflowKey === "string" && child.workflowKey.trim() ? ` '${child.workflowKey}'` : ""}: reply to the supervisor request first, then wait with bg_wait({ id: "${child.runId}" }). Use subagent({ action: "status", input: { id: "${child.runId}" } }) to recover the result; do not resume or launch a replacement while it remains detached.`),
+			// oxlint-disable-next-line anti-slop/no-runtime-typeof, typescript/restrict-template-expressions -- Persisted child metadata is narrowed inline before rendering.
 			...resumableWorkflowChildren.map(({ child }) => `Revive workflow child${typeof child.workflowKey === "string" && child.workflowKey.trim() ? ` '${child.workflowKey}'` : ""}: subagent({ action: "resume", input: { id: "${child.runId}", message: "..." } })`),
 		].join("\n");
 	}

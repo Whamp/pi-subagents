@@ -23,14 +23,13 @@ import type {
   EffectTraceEntry,
   EvalFixture,
   FakeToolResult,
-  JsonRecord,
-  JsonValue,
   PublishedToolDefinition,
   ProviderUsageTotals,
   SessionAttemptMetrics,
   ToolCallRecord,
   VariantKind,
 } from "./eval-types.ts";
+import type { JsonRecord, JsonValue } from "./json-value.ts";
 import type { LoadedVariant } from "./variant-modules.ts";
 
 /** Structural view of the production Pi SDK entry the runner uses. */
@@ -66,10 +65,15 @@ export interface AgentSessionResult {
   extensionsResult: { errors: unknown[] };
 }
 
+interface EvalSessionLifecycleEvent {
+  type: "session_shutdown";
+  reason: "quit";
+}
+
 export interface EvalSessionLifecycleHandle {
   dispose: () => void;
   readonly extensionRunner: {
-    emit: (event: JsonRecord) => Promise<JsonValue | undefined>;
+    emit: (event: EvalSessionLifecycleEvent) => Promise<JsonValue | undefined>;
   };
 }
 

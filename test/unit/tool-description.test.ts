@@ -73,8 +73,8 @@ function readRegisteredTool(agentDir: string): {
   };
 }
 
-describe("registered subagent command description", () => {
-  it("uses one unconditional compact catalog description", () => {
+void describe("registered subagent command description", () => {
+  void it("uses one unconditional compact catalog description", () => {
     assert.match(
       SUBAGENT_COMMAND_TOOL_DESCRIPTION,
       /Before launching.*\{action:'list',input:\{capabilities:true\}\}/,
@@ -120,7 +120,7 @@ describe("registered subagent command description", () => {
     );
   });
 
-  it("keeps evaluation fixture answers out of the published description", () => {
+  void it("keeps evaluation fixture answers out of the published description", () => {
     const fixtureSpecificTokens = [
       "writer-review-fix",
       "run-ci",
@@ -138,7 +138,7 @@ describe("registered subagent command description", () => {
     }
   });
 
-  it("registers only action and input without prompt metadata", () => {
+  void it("registers only action and input without prompt metadata", () => {
     const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-command-description-"));
     const tool = readRegisteredTool(agentDir);
     assert.equal(tool.description, SUBAGENT_COMMAND_TOOL_DESCRIPTION);
@@ -148,7 +148,7 @@ describe("registered subagent command description", () => {
     assert.deepEqual(tool.required, ["action"]);
   });
 
-  it("fails loudly when removed toolDescriptionMode remains configured", () => {
+  void it("fails loudly when removed toolDescriptionMode remains configured", () => {
     const agentDir = fs.mkdtempSync(
       path.join(os.tmpdir(), "pi-subagents-removed-description-mode-"),
     );

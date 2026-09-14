@@ -64,8 +64,8 @@ function attemptMetrics(
   };
 }
 
-describe("eval outcome classification", () => {
-  it("classifies assistant stopReason error as provider error, not semantic failure", () => {
+void describe("eval outcome classification", () => {
+  void it("classifies assistant stopReason error as provider error, not semantic failure", () => {
     const classification = classifyEvalOutcome(
       observations({
         lastAssistantStopReason: "error",
@@ -76,7 +76,7 @@ describe("eval outcome classification", () => {
     assert.match(classification.reason, /Codex overloaded/);
   });
 
-  it("classifies provider-pattern prompt errors as provider error", () => {
+  void it("classifies provider-pattern prompt errors as provider error", () => {
     for (const message of [
       "Provider overloaded, please retry",
       "Rate limit exceeded for this key",
@@ -92,7 +92,7 @@ describe("eval outcome classification", () => {
     }
   });
 
-  it("classifies harness and setup prompt errors as setup error", () => {
+  void it("classifies harness and setup prompt errors as setup error", () => {
     const classification = classifyEvalOutcome(
       observations({ promptError: "extension factory threw TypeError: pi.on is not a function" }),
     );
@@ -103,7 +103,7 @@ describe("eval outcome classification", () => {
     );
   });
 
-  it("splits turn-cap exhaustion from wall-clock timeout", () => {
+  void it("splits turn-cap exhaustion from wall-clock timeout", () => {
     assert.equal(
       classifyEvalOutcome(observations({ turnLimitHit: true, lastAssistantStopReason: "aborted" }))
         .outcome,
@@ -131,7 +131,7 @@ describe("eval outcome classification", () => {
     );
   });
 
-  it("never classifies either timeout flavor as a semantic failure", () => {
+  void it("never classifies either timeout flavor as a semantic failure", () => {
     for (const flags of [{ turnLimitHit: true }, { wallTimeoutHit: true }]) {
       const outcome = classifyEvalOutcome(
         observations({ ...flags, semanticEvaluated: true, semanticPass: true }),
@@ -141,7 +141,7 @@ describe("eval outcome classification", () => {
     }
   });
 
-  it("classifies semantic pass and fail", () => {
+  void it("classifies semantic pass and fail", () => {
     assert.equal(
       classifyEvalOutcome(observations({ semanticPass: true })).outcome,
       "semantic-pass",
@@ -152,7 +152,7 @@ describe("eval outcome classification", () => {
     );
   });
 
-  it("forces semantic fail when prohibited effects were observed", () => {
+  void it("forces semantic fail when prohibited effects were observed", () => {
     const classification = classifyEvalOutcome(
       observations({
         semanticPass: true,
@@ -165,7 +165,7 @@ describe("eval outcome classification", () => {
     assert.match(classification.reason, /prohibited-launch/);
   });
 
-  it("treats a missing final answer as semantic fail, not success", () => {
+  void it("treats a missing final answer as semantic fail, not success", () => {
     const classification = classifyEvalOutcome(
       observations({ semanticEvaluated: false, semanticPass: false }),
     );
@@ -174,8 +174,8 @@ describe("eval outcome classification", () => {
   });
 });
 
-describe("eval pair retry and comparability", () => {
-  it("retries wall-clock timeouts and provider/setup errors, never turn-limit or semantic outcomes", () => {
+void describe("eval pair retry and comparability", () => {
+  void it("retries wall-clock timeouts and provider/setup errors, never turn-limit or semantic outcomes", () => {
     assert.equal(shouldRetryPair("provider-error", "semantic-fail", 1), true);
     assert.equal(shouldRetryPair("semantic-pass", "setup-error", 2), true);
     assert.equal(shouldRetryPair("wall-timeout", "semantic-pass", 1), true);
@@ -186,7 +186,7 @@ describe("eval pair retry and comparability", () => {
     assert.equal(shouldRetryPair("wall-timeout", "semantic-pass", 0), false);
   });
 
-  it("selects the first attempt where both variants produced semantic outcomes, aligned by attempt index", () => {
+  void it("selects the first attempt where both variants produced semantic outcomes, aligned by attempt index", () => {
     const attempts = [
       attemptMetrics("baseline", "provider-error", 1),
       attemptMetrics("candidate", "semantic-pass", 1),
@@ -209,7 +209,7 @@ describe("eval pair retry and comparability", () => {
     assert.equal(noneComparable.baseline, null);
   });
 
-  it("reports wall-timeout and turn-limit tallies separately and excludes both from the semantic denominator", () => {
+  void it("reports wall-timeout and turn-limit tallies separately and excludes both from the semantic denominator", () => {
     const chosenPair: PairAttemptRecord = {
       pairId: "provider/model/a#1",
       attempts: [

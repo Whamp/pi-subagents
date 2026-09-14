@@ -72,7 +72,7 @@ describe("classifyTaskMutationIntent", () => {
 		assert.equal(taskMayMutate(briefing), false);
 	});
 
-	it("does not mistake scoped no-code-change constraints for a read-only task", () => {
+	void it("does not mistake scoped no-code-change constraints for a read-only task", () => {
 		for (const task of [
 			"No code changes outside src/. Implement the fix in src/parser.ts.",
 			"Implement the fix. No code changes are needed in tests.",

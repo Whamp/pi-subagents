@@ -19,6 +19,7 @@ function escapeXml(value: string): string {
 
 function promptDescription(description: string): string {
   let text = description
+    // oxlint-disable-next-line no-control-regex -- Prompt descriptions must replace every ASCII control character.
     .replace(/[\u0000-\u001f\u007f]+/gu, " ")
     .replace(/\s+/gu, " ")
     .trim();

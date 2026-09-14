@@ -93,8 +93,8 @@ function run(fixture: EvalFixture, trace: EffectTraceEntry[], finalText: string)
   return evaluateScenarioPredicate(fixture.id, trace, finalText, fixture);
 }
 
-describe("development suite predicates discriminate counterfeits", () => {
-  it("read-only-child passes a faithful trace and fails the no-delegation counterfeit", () => {
+void describe("development suite predicates discriminate counterfeits", () => {
+  void it("read-only-child passes a faithful trace and fails the no-delegation counterfeit", () => {
     const fixture = fixtureFrom(developmentSuite, "read-only-child");
     const faithful = new TraceBuilder()
       .push({ kind: "discovery", capabilities: true })
@@ -133,7 +133,7 @@ describe("development suite predicates discriminate counterfeits", () => {
     assert.equal(run(fixture, wrongAgent, "Two retries.").pass, false);
   });
 
-  it("isolated-parallel-writers requires one admitted batch, distinct keys, and isolation", () => {
+  void it("isolated-parallel-writers requires one admitted batch, distinct keys, and isolation", () => {
     const fixture = fixtureFrom(developmentSuite, "isolated-parallel-writers");
     const faithful = new TraceBuilder()
       .push({ kind: "discovery", capabilities: true })
@@ -194,7 +194,7 @@ describe("development suite predicates discriminate counterfeits", () => {
     assert.equal(run(fixture, shared, "Billing and reporting done.").pass, false);
   });
 
-  it("writer-review-fix enforces reviewer ordering, fresh context, and a defect-conveying fix", () => {
+  void it("writer-review-fix enforces reviewer ordering, fresh context, and a defect-conveying fix", () => {
     const fixture = fixtureFrom(developmentSuite, "writer-review-fix");
     const faithful = new TraceBuilder()
       .push({ kind: "discovery", capabilities: true })
@@ -306,7 +306,7 @@ describe("development suite predicates discriminate counterfeits", () => {
     assert.equal(run(fixture, findingsNeverReachFix, "Two retries.").pass, false);
   });
 
-  it("infrastructure-failure accepts exactly one launch attempt and rejects alternates", () => {
+  void it("infrastructure-failure accepts exactly one launch attempt and rejects alternates", () => {
     const fixture = fixtureFrom(developmentSuite, "infrastructure-failure");
     const faithful = new TraceBuilder()
       .push({ kind: "discovery", capabilities: true })
@@ -373,7 +373,7 @@ describe("development suite predicates discriminate counterfeits", () => {
     );
   });
 
-  it("retained-child-resume targets only the resumable row and rejects replacement launches", () => {
+  void it("retained-child-resume targets only the resumable row and rejects replacement launches", () => {
     const fixture = fixtureFrom(developmentSuite, "retained-child-resume");
     const faithful = new TraceBuilder()
       .push({ kind: "children-list" })
@@ -407,7 +407,7 @@ describe("development suite predicates discriminate counterfeits", () => {
     assert.equal(run(fixture, replacement, "Verified two retries.").pass, false);
   });
 
-  it("named-workflow-policy requires the allowed policy decision before the single effect", () => {
+  void it("named-workflow-policy requires the allowed policy decision before the single effect", () => {
     const fixture = fixtureFrom(developmentSuite, "named-workflow-policy");
     const faithful = new TraceBuilder()
       .push({ kind: "policy-allow" })
@@ -445,8 +445,8 @@ describe("development suite predicates discriminate counterfeits", () => {
   });
 });
 
-describe("capability suite predicates discriminate counterfeits", () => {
-  it("agent-access-check requires get before launch and a write-capable agent", () => {
+void describe("capability suite predicates discriminate counterfeits", () => {
+  void it("agent-access-check requires get before launch and a write-capable agent", () => {
     const fixture = fixtureFrom(capabilitySuite, "capability-agent-access-check");
     const faithful = new TraceBuilder()
       .push({ kind: "get", agent: "worker" })
@@ -484,7 +484,7 @@ describe("capability suite predicates discriminate counterfeits", () => {
     assert.equal(run(fixture, readOnly, "Validation implemented.").pass, false);
   });
 
-  it("model-selection requires a table model chosen after consulting models", () => {
+  void it("model-selection requires a table model chosen after consulting models", () => {
     const fixture = fixtureFrom(capabilitySuite, "capability-model-selection");
     const faithful = new TraceBuilder()
       .push({ kind: "models", agent: undefined })
@@ -528,7 +528,7 @@ describe("capability suite predicates discriminate counterfeits", () => {
     assert.equal(run(fixture, noCheck, "Incident summary delivered.").pass, false);
   });
 
-  it("validate-then-run requires the same validated script before execution", () => {
+  void it("validate-then-run requires the same validated script before execution", () => {
     const fixture = fixtureFrom(capabilitySuite, "capability-validate-then-run");
     const script =
       "return await runs.all([{key:'inc',agent:'scout',task:'Summarize the incident report'},{key:'post',agent:'scout',task:'Summarize the postmortem'}])";
@@ -579,7 +579,7 @@ describe("capability suite predicates discriminate counterfeits", () => {
     assert.equal(run(fixture, differentScript, "Incident and postmortem reported.").pass, false);
   });
 
-  it("status-recovery rejects relaunching and requires the stored run answer", () => {
+  void it("status-recovery rejects relaunching and requires the stored run answer", () => {
     const fixture = fixtureFrom(capabilitySuite, "capability-status-recovery");
     const faithful = new TraceBuilder()
       .push({ kind: "status", id: "run-abc123", view: "transcript", returnedTail: [] })
@@ -604,7 +604,7 @@ describe("capability suite predicates discriminate counterfeits", () => {
     assert.equal(run(fixture, guessed, "The retry cap is two attempts.").pass, false);
   });
 
-  it("steer-live-run rejects replacement launches and stops", () => {
+  void it("steer-live-run rejects replacement launches and stops", () => {
     const fixture = fixtureFrom(capabilitySuite, "capability-steer-live-run");
     const faithful = new TraceBuilder()
       .push({ kind: "steer", id: "run-live-77", message: "also cover the timeout path" })
@@ -633,7 +633,7 @@ describe("capability suite predicates discriminate counterfeits", () => {
     assert.ok(collectProhibitedEffects(stopped, fixture).some((entry) => entry.kind === "stop"));
   });
 
-  it("stop-stray-run requires the stop and rejects steer or replacement", () => {
+  void it("stop-stray-run requires the stop and rejects steer or replacement", () => {
     const fixture = fixtureFrom(capabilitySuite, "capability-stop-stray-run");
     const faithful = new TraceBuilder()
       .push({
@@ -652,7 +652,7 @@ describe("capability suite predicates discriminate counterfeits", () => {
     assert.equal(run(fixture, steered, "Stopped the run.").pass, false);
   });
 
-  it("mission-attach requires the exact target and an observed show after attach", () => {
+  void it("mission-attach requires the exact target and an observed show after attach", () => {
     const fixture = fixtureFrom(capabilitySuite, "capability-mission-attach");
     const faithful = new TraceBuilder()
       .push({ kind: "mission-attach", missionId: "m-17", runId: "run-9f2" })
@@ -675,7 +675,7 @@ describe("capability suite predicates discriminate counterfeits", () => {
     assert.equal(run(fixture, claimed, "Two runs listed now.").pass, false);
   });
 
-  it("schedule-one-shot rejects immediate execution and requires the exact timestamp", () => {
+  void it("schedule-one-shot rejects immediate execution and requires the exact timestamp", () => {
     const fixture = fixtureFrom(capabilitySuite, "capability-schedule-one-shot");
     const scheduledAt = "2031-04-07T09:30:00-04:00";
     const faithful = new TraceBuilder()
@@ -713,7 +713,7 @@ describe("capability suite predicates discriminate counterfeits", () => {
     assert.equal(run(fixture, noScript, "Scheduled.").pass, false);
   });
 
-  it("workflow-script-file requires the path form and rejects inlining", () => {
+  void it("workflow-script-file requires the path form and rejects inlining", () => {
     const fixture = fixtureFrom(capabilitySuite, "capability-workflow-script-file");
     const faithful = new TraceBuilder()
       .push({ kind: "workflow-script-path", path: "plans/review.js" })
@@ -752,8 +752,8 @@ describe("capability suite predicates discriminate counterfeits", () => {
   });
 });
 
-describe("held-out suite predicates implement the independent design", () => {
-  it("foreground-structured-classifier fails parent-authored and background counterfeits", () => {
+void describe("held-out suite predicates implement the independent design", () => {
+  void it("foreground-structured-classifier fails parent-authored and background counterfeits", () => {
     const fixture = fixtureFrom(heldOutSuite, "held-out-foreground-structured-classifier");
     const faithful = new TraceBuilder()
       .push({
@@ -843,7 +843,7 @@ describe("held-out suite predicates implement the independent design", () => {
     assert.equal(evaluateScenarioOutcome(fixture, wrapped, "It is urgent.").pass, false);
   });
 
-  it("conditional-structured-routing fails both-branch, hardcoded, and wrong-output counterfeits", () => {
+  void it("conditional-structured-routing fails both-branch, hardcoded, and wrong-output counterfeits", () => {
     const fixture = fixtureFrom(heldOutSuite, "held-out-conditional-structured-routing");
     const faithful = new TraceBuilder()
       .push({
@@ -919,7 +919,7 @@ describe("held-out suite predicates implement the independent design", () => {
     assert.equal(routerResult.pass, false);
   });
 
-  it("offline-nested-async-validation fails execution-first and prose-only counterfeits", () => {
+  void it("offline-nested-async-validation fails execution-first and prose-only counterfeits", () => {
     const fixture = fixtureFrom(heldOutSuite, "held-out-offline-nested-async-validation");
     const script =
       'async function launch() { return runs.run("scan", { agent: "scout", task: "scan" }); } return launch();';
@@ -959,7 +959,7 @@ describe("held-out suite predicates implement the independent design", () => {
     );
   });
 
-  it("transcript-tail fails polling, wrong child, and untargeted reads", () => {
+  void it("transcript-tail fails polling, wrong child, and untargeted reads", () => {
     const fixture = fixtureFrom(heldOutSuite, "held-out-transcript-tail");
     const tail = [
       "AUDIT-19",
@@ -1046,7 +1046,7 @@ describe("held-out suite predicates implement the independent design", () => {
     assert.equal(evaluateScenarioOutcome(fixture, mutated, tail.join("\n")).pass, false);
   });
 
-  it("child-scoped-stop fails run-level widening, interrupts, and schema-error probing", () => {
+  void it("child-scoped-stop fails run-level widening, interrupts, and schema-error probing", () => {
     const fixture = fixtureFrom(heldOutSuite, "held-out-child-scoped-stop");
     const faithful = new TraceBuilder()
       .push({
@@ -1108,7 +1108,7 @@ describe("held-out suite predicates implement the independent design", () => {
     assert.equal(evaluateScenarioOutcome(fixture, steered, "Asked review-ui to stop.").pass, false);
   });
 
-  it("raw-host-denial requires the boundary attempt plus an honest report", () => {
+  void it("raw-host-denial requires the boundary attempt plus an honest report", () => {
     const fixture = fixtureFrom(heldOutSuite, "held-out-raw-host-denial");
     const faithful = new TraceBuilder()
       .push({
@@ -1170,8 +1170,8 @@ describe("held-out suite predicates implement the independent design", () => {
   });
 });
 
-describe("predicate plumbing", () => {
-  it("fails loudly for fixtures without a registered predicate", () => {
+void describe("predicate plumbing", () => {
+  void it("fails loudly for fixtures without a registered predicate", () => {
     const outcome = evaluateScenarioPredicate(
       "unknown-fixture",
       [],
@@ -1183,7 +1183,7 @@ describe("predicate plumbing", () => {
     assert.match(outcome.reasons[0] ?? "", /no semantic predicate/);
   });
 
-  it("counts help, discovery, and launch facts from traces", () => {
+  void it("counts help, discovery, and launch facts from traces", () => {
     const trace = new TraceBuilder()
       .push({ kind: "help", topic: "workflows" })
       .push({ kind: "discovery", capabilities: true })

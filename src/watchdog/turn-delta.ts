@@ -198,6 +198,7 @@ export function formatWatchdogOrchestrationActivity(event: unknown): string {
 		const eligible = call.name === "bg_wait"
 			|| (call.name === "subagent_supervisor" && ["pending", "list", "reply"].includes(args.action))
 			|| (call.name === "subagent" && (["status", "resume", "interrupt", "steer", "stop"].includes(args.action)
+				// oxlint-disable-next-line anti-slop/no-runtime-typeof -- Legacy stored flat calls cross this historical activity boundary without a schema.
 				|| (args.action === undefined && (typeof args.agent === "string" || typeof args.workflowScript === "string" || typeof args.workflowScriptPath === "string"))
 				|| (catalogLaunch !== undefined && [catalogLaunch.input.agent, catalogLaunch.input.workflowScript, catalogLaunch.input.workflowScriptPath, catalogLaunch.input.workflow]
 					.some((selector) => (selector?.trim().length ?? 0) > 0))));
