@@ -128,60 +128,28 @@ describe("watchdog turn delta formatter", () => {
 		assert.match(delta, /Final assistant stop: stop without tool call/);
 	});
 
-	it("includes paired catalog launches for every launch selector", () => {
-		const calls = [
-			{ id: "direct", input: { agent: "worker", task: "implement" } },
-			{ id: "script", input: { workflowScript: "return [];" } },
-			{ id: "path", input: { workflowScriptPath: "workflow.js" } },
-			{ id: "named", input: { workflow: "review-and-fix" } },
-		].map(({ id, input }) => ({ type: "toolCall", id, name: "subagent", arguments: { action: "execute", input } }));
-		const activity = formatWatchdogOrchestrationActivity({
-			type: "turn_end",
-			message: { content: calls },
-			toolResults: calls.map((call) => ({ role: "toolResult", toolCallId: call.id, toolName: call.name, content: "complete" })),
-		});
+	it("distinguishes a validated structured terminal from an ordinary empty terminal", () => {
+		const messages = [{ role: "assistant", content: [], stopReason: "stop" }];
+		const ordinary = formatWatchdogTurnDelta({ messages, finalAssistantStop: true });
+		const structured = formatWatchdogTurnDelta({ messages, finalAssistantStop: true, structuredTerminal: true });
 
-		assert.match(activity, /agent: worker/);
-		assert.match(activity, /workflowScript: return \[\];/);
-		assert.match(activity, /workflowScriptPath: workflow\.js/);
-		assert.match(activity, /workflow: review-and-fix/);
+		assert.match(ordinary, /Assistant: \(no text\)/);
+		assert.match(ordinary, /stop without tool call/);
+		assert.doesNotMatch(structured, /\(no text\)|stop without tool call/);
+		assert.match(structured, /validated structured output is the terminal response; no prose is required/);
+		assert.match(structured, /validated structured output completed the response/);
 	});
 
-	it("excludes catalog nonlaunch and unpaired calls", () => {
-		const activity = formatWatchdogOrchestrationActivity({
-			type: "turn_end",
-			message: { content: [
-				{ type: "toolCall", id: "help", name: "subagent", arguments: { action: "help" } },
-				{ type: "toolCall", id: "list", name: "subagent", arguments: { action: "list", input: {} } },
-				{ type: "toolCall", id: "empty", name: "subagent", arguments: { action: "execute", input: {} } },
-				{ type: "toolCall", id: "blank", name: "subagent", arguments: { action: "execute", input: { agent: " " } } },
-				{ type: "toolCall", id: "unpaired", name: "subagent", arguments: { action: "execute", input: { agent: "worker" } } },
-			] },
-			toolResults: [
-				{ role: "toolResult", toolCallId: "help", toolName: "subagent", content: "help" },
-				{ role: "toolResult", toolCallId: "list", toolName: "subagent", content: "agents" },
-				{ role: "toolResult", toolCallId: "empty", toolName: "subagent", content: "invalid" },
-				{ role: "toolResult", toolCallId: "blank", toolName: "subagent", content: "invalid" },
+	it("keeps independent tool evidence visible at a structured terminal", () => {
+		const delta = formatWatchdogTurnDelta({
+			structuredTerminal: true,
+			messages: [
+				{ role: "toolResult", toolName: "bash", isError: true, content: "tests failed" },
+				{ role: "assistant", content: [], stopReason: "stop" },
 			],
 		});
 
-		assert.equal(activity, "");
-	});
-
-	it("preserves paired legacy flat launch recognition", () => {
-		const calls = [
-			{ type: "toolCall", id: "direct", name: "subagent", arguments: { agent: "worker", task: "implement" } },
-			{ type: "toolCall", id: "script", name: "subagent", arguments: { workflowScript: "return [];" } },
-			{ type: "toolCall", id: "path", name: "subagent", arguments: { workflowScriptPath: "workflow.js" } },
-		];
-		const activity = formatWatchdogOrchestrationActivity({
-			type: "turn_end",
-			message: { content: calls },
-			toolResults: calls.map((call) => ({ role: "toolResult", toolCallId: call.id, toolName: call.name, content: "complete" })),
-		});
-
-		assert.match(activity, /agent: worker/);
-		assert.match(activity, /workflowScript: return \[\];/);
-		assert.match(activity, /workflowScriptPath: workflow\.js/);
+		assert.match(delta, /Tool result: bash\nError: tool reported an error\nOutput:\ntests failed/);
+		assert.match(delta, /validated structured output is the terminal response/);
 	});
 });

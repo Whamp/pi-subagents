@@ -10,6 +10,30 @@ import {
 import { SUBAGENT_ACTIONS } from "../../src/shared/types.ts";
 
 describe("subagent command catalog", () => {
+  it("forwards current upstream execution options without changing host parameters", () => {
+    const input = { agent: "worker", machine: "build-host", checkpointBeforeDeadlineMs: 5000, outputSchema: false, gate: { command: "check", output: "json" } };
+    const parsed = parseSubagentCatalogCall({ action: "execute", input });
+    assert.equal(parsed.ok, true);
+    if (!parsed.ok || parsed.request.kind === "help") throw new Error("Expected executable request");
+    assert.deepEqual(parsed.request.params, { ...input, output: true });
+    assert.equal(parseSubagentCatalogCall({ action: "status", input: { machine: "build-host" } }).ok, false);
+  });
+
+  it("exposes portable inspection and workflow arguments through their operations", () => {
+    for (const [action, input] of [
+      ["inspector.command", { id: "run-1" }],
+      ["validate", { workflowScript: "return args;", args: { value: 1 } }],
+      ["schedule.create", { every: "1h", quiet: true, args: { value: 1 }, workflowScript: "return args;" }],
+    ] as const) {
+      const parsed = parseSubagentCatalogCall({ action, input });
+      assert.equal(parsed.ok, true);
+      if (!parsed.ok || parsed.request.kind !== "management") throw new Error("Expected management request");
+      assert.deepEqual(parsed.request.params, { ...input, action });
+    }
+    assert.equal(parseSubagentCatalogCall({ action: "inspector.command" }).ok, false);
+  });
+
+
   it("covers execute, help, and every canonical management action", () => {
     assert.deepEqual(SUBAGENT_COMMAND_CATALOG_ACTIONS, ["execute", "help", ...SUBAGENT_ACTIONS]);
   });

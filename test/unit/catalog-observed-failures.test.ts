@@ -6,7 +6,7 @@ import {
   parseSubagentCatalogCall,
   prepareSubagentCatalogArguments,
 } from "../../src/extension/subagent-command-catalog.ts";
-import { runWorkflowScript, validateWorkflowScript } from "../../src/workflows/scripted-workflow.ts";
+import { runWorkflowScript } from "../../src/workflows/scripted-workflow.ts";
 
 type FixtureValue = string | number | boolean | null | FixtureValue[] | { [key: string]: FixtureValue };
 
@@ -83,10 +83,9 @@ describe("observed post-catalog failure replays", () => {
     }
   });
 
-  it("rejects all five observed workflow shapes before any child launch", async () => {
+  it("rejects all five observed workflow calls and records prior launches", async () => {
     for (const fixture of fixtures.filter(({ boundary }) => boundary === "workflow")) {
       const script = String(fixture.call.input?.workflowScript);
-      assert.equal(validateWorkflowScript(script).ok, false, fixture.sourceId);
       const launched: string[] = [];
       await assert.rejects(
         runWorkflowScript({
@@ -99,10 +98,10 @@ describe("observed post-catalog failure replays", () => {
             return { key, ok: true, output: "unexpected", artifactPaths: [] };
           },
         }),
-        /no children launched/,
+        /runs\.(run|all)/,
         fixture.sourceId,
       );
-      assert.deepEqual(launched, [], fixture.sourceId);
+      assert.deepEqual(launched, script.startsWith("await runs.all") ? ["first"] : [], fixture.sourceId);
     }
   });
 });

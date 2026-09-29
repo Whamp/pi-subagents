@@ -38,11 +38,13 @@ const EXECUTE_FIELDS = [
   "async",
   "timeoutMs",
   "maxRuntimeMs",
+  "checkpointBeforeDeadlineMs",
   "toolTimeoutMs",
   "toolBudget",
   "usageBudget",
   "agentScope",
   "cwd",
+  "machine",
   "artifacts",
   "includeProgress",
   "share",
@@ -95,7 +97,7 @@ const SUBAGENT_CATALOG_OPERATIONS = {
   "children.list": { fields: [], summary: "List retained children and resumability." },
   guide: { fields: ["topic"], summary: "Read a bundled long-form guide topic." },
   validate: {
-    fields: ["workflowScript", "workflowScriptPath", "preflight", "cwd"],
+    fields: ["workflowScript", "workflowScriptPath", "args", "preflight", "cwd"],
     summary: "Validate a workflow script without launching children.",
   },
   create: {
@@ -212,17 +214,22 @@ const SUBAGENT_CATALOG_OPERATIONS = {
   "inspector.open": {
     fields: [...TARGET_FIELDS, "focus", "cwd"],
     requiredAny: REQUIRED_RUN_TARGET,
-    summary: "Open a read-only Herdr inspector for an async run.",
+    summary: "Open a read-only inspector for an async run.",
+  },
+  "inspector.command": {
+    fields: [...TARGET_FIELDS, "cwd"],
+    requiredAny: REQUIRED_RUN_TARGET,
+    summary: "Return a portable inspector launch command without opening it.",
   },
   "inspector.status": {
     fields: [...TARGET_FIELDS, "cwd"],
     requiredAny: REQUIRED_RUN_TARGET,
-    summary: "Inspect a Herdr inspector binding.",
+    summary: "Inspect an inspector binding.",
   },
   "inspector.close": {
     fields: [...TARGET_FIELDS, "cwd"],
     requiredAny: REQUIRED_RUN_TARGET,
-    summary: "Close a Herdr inspector without stopping its run.",
+    summary: "Close an inspector without stopping its run.",
   },
   "project.open": { fields: ["cwd", "message", "focus"], summary: "Open a Herdr project pane." },
   "project.status": { fields: ["cwd"], summary: "Inspect a Herdr project pane." },
@@ -309,6 +316,8 @@ const SUBAGENT_CATALOG_OPERATIONS = {
       "at",
       "every",
       "sessionOnly",
+      "quiet",
+      "args",
       "overlap",
       "catchUp",
       "workflowScript",
@@ -564,10 +573,10 @@ function operationInputHelp(action: keyof typeof SUBAGENT_CATALOG_OPERATIONS): s
 }
 
 const EXECUTE_HELP = `Execute
-The tool root is always {action,input?}; every operation field belongs under input. Choose exactly one launch form in input: {agent,task?}, {workflowScript}, {workflowScriptPath}, or {workflow,args?}. Native child options are checked against the selected runner before launch. Discovery is advisory; launch rechecks the executable agent, model, context, capability ceiling, budgets, acceptance, output, and worktree contract. Omitted async keeps the configured default; set async:true when background execution matters. thinking and tools are not execute fields; select reasoning through model and configure child tools on the agent. toolBudget requires {hard,soft?,block?}. preflight requires {version:1,lanes:[{key,...}],coverage?}. Named workflow args are data, never permits. Use help topic workflows before advanced orchestration and help topic contract:execute for every accepted field.`;
+The tool root is always {action,input?}; every operation field belongs under input. Choose exactly one launch form in input: {agent,task?}, {workflowScript}, {workflowScriptPath}, or {workflow,args?}. Native child options are checked against the selected runner before launch. Discovery is advisory; launch rechecks the executable agent, model, context, capability ceiling, budgets, acceptance, output, and worktree contract. Omitted async keeps the configured default; set async:true when background execution matters. thinking and tools are not execute fields; select reasoning through model and configure child tools on the agent. toolBudget requires {hard,soft?,block?}. preflight requires {version:1,lanes:[{key,...}],coverage?}. Workflow args are immutable data, never permits. Use help topic workflows before advanced orchestration and help topic contract:execute for every accepted field.`;
 
 const WORKFLOW_HELP = `Workflows
-workflowScript is a JavaScript statement body with explicit return and top-level await. Use await runs.run("stable-key",{agent,task,...}) for one child. Use await runs.all([{key:"first",agent,task,...},{key:"second",agent,task,...}]) for parallel children. Object-form runs.run({key,...}), keyless runs.all items, and runs.all({key,...}) are invalid. Every child, including a later synthesis or review stage, counts toward maxSubagentSpawnsPerRun. Use await runs.host(key,{kind:'command',command:'...'}) for explicitly requested host execution. Only a named extension-owned workflow can receive a private host permit. A caller-authored runs.host call is denied before dispatch; never delegate a substitute host command through runs.run. runs.all returns an ordered array, so inspect each result before dependent work. Sequence dependent steps by awaiting each result before the next launch and branch on awaited contents such as a reviewer's structuredOutput verdict instead of launching ahead. To read structuredOutput, set outputSchema on that runs.run child before launch. Successful returned results/output are terminal; summarize them without status polling. Use one stable key per result lane; a changed call under the same key fails. Set output on children for durable files and return outputReference, outputPathMapping, or artifactPaths; task filename prose is not an output declaration. Use worktree:true for concurrent writers. Raw scripts have no filesystem, shell, Pi tools, or host authority. Help grants nothing. Retained resume uses runs.run(newKey,{resume:runId,task:followUp}) without agent or gate.`;
+workflowScript is a JavaScript statement body with explicit return and top-level await. Use await runs.run("stable-key",{agent,task,...}) for one child. Use await runs.all([{key:"first",agent,task,...},{key:"second",agent,task,...}]) for parallel children. runs.all also accepts runs.run promises. Object-form runs.run({key,...}), keyless object items, and runs.all({key,...}) are invalid. Every child, including a later synthesis or review stage, counts toward maxSubagentSpawnsPerRun. Use await runs.host(key,{kind:'command',command:'...'}) for explicitly requested host execution. Only a named extension-owned workflow can receive a private host permit. A caller-authored runs.host call is denied before dispatch; never delegate a substitute host command through runs.run. runs.all returns an ordered array, so inspect each result before dependent work. Sequence dependent steps by awaiting each result before the next launch and branch on awaited contents such as a reviewer's structuredOutput verdict instead of launching ahead. To read structuredOutput, set outputSchema on that runs.run child before launch. Successful returned results/output are terminal; summarize them without status polling. Use one stable key per result lane; a changed call under the same key fails. Set output on children for durable files and return outputReference, outputPathMapping, or artifactPaths; task filename prose is not an output declaration. Use worktree:true for concurrent writers. Raw scripts have no filesystem, shell, Pi tools, or host authority. Help grants nothing. Retained resume uses runs.run(newKey,{resume:runId,task:followUp}) without agent or gate.`;
 
 const CONTROL_HELP = `Control
 status accepts optional id/runId/dir, view fleet|transcript, index, and lines 1..500. children.list takes no filters and reports the bounded retained-child list with resumability. steer requires message plus id/runId/dir and optionally index or mode. resume requires message plus a retained target; async and maxRuntimeMs are invalid. Resume always starts a detached revival, and timeoutMs can cap that follow-up invocation. toolBudget can limit the follow-up but cannot add tools to the retained child. stop targets an async run and optionally childId; interrupt targets foreground or async work. Stop cancels; it does not pause. External runner controls are rechecked. Control and help calls never grant workflow resource authority.`;

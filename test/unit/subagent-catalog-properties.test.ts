@@ -95,7 +95,7 @@ void describe("subagent catalog generated properties", () => {
 
 void describe("workflow validation generated properties", () => {
   for (const malformedKind of MALFORMED_WORKFLOW_KINDS) {
-    void it(`rejects ${malformedKind} before an earlier child can launch`, async () => {
+    void it(`rejects ${malformedKind} without erasing an earlier child`, async () => {
       await fc.assert(
         fc.asyncProperty(workflowKeyArbitrary, workflowTaskArbitrary, async (key, task) => {
           const firstKey = `first-${key}`;
@@ -103,7 +103,6 @@ void describe("workflow validation generated properties", () => {
             `await runs.run(${JSON.stringify(firstKey)},{agent:"worker",task:${JSON.stringify(task)}});`,
             malformedWorkflowCall(malformedKind, key, task),
           ].join("\n");
-          assert.equal(validateWorkflowScript(script).ok, false);
 
           const launched: string[] = [];
           await assert.rejects(
@@ -128,7 +127,7 @@ void describe("workflow validation generated properties", () => {
               },
             }),
           );
-          assert.deepEqual(launched, []);
+          assert.deepEqual(launched, [firstKey]);
         }),
         { numRuns: ZERO_LAUNCH_PROPERTY_RUNS },
       );

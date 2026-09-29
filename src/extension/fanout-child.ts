@@ -9,12 +9,15 @@ import { resolveWaitToolConfig } from "../runs/background/wait-config.ts";
 import type { ChildRuntimeConfig } from "../runs/shared/child-runtime-config.ts";
 import { readNestedControlRequests, resolveInheritedNestedRoute, type NestedRoute, writeNestedControlResult } from "../runs/shared/nested-events.ts";
 import { deliverSubagentIntercomMessageEvent } from "../intercom/result-intercom.ts";
+import { createNativeSupervisorChannel, NATIVE_SUPERVISOR_TOOL_NAME, resolveSupervisorChannelDir } from "../intercom/native-supervisor-channel.ts";
+import { readStatus } from "../shared/utils.ts";
 import { resolveSubagentIntercomTarget } from "../intercom/intercom-bridge.ts";
 import { createSubagentCatalogParamsSchema } from "./schemas.ts";
 import { finalizeToolResult } from "./tool-result.ts";
 import { parseFanoutChildSubagentCatalogCall, prepareSubagentCatalogArguments, renderSubagentCatalogHelp } from "./subagent-command-catalog.ts";
 import { loadConfig, resolveAsyncByDefault } from "./config.ts";
-import { type Details, type SubagentState } from "../shared/types.ts";
+import { SUBAGENT_ASYNC_STARTED_EVENT, type AsyncStartedEvent, type Details, type SubagentState } from "../shared/types.ts";
+import { createChildExternalJobBridgeSweeper } from "../runs/shared/external-job-bridge.ts";
 
 function getSubagentSessionRoot(parentSessionFile: string | null): string {
 	if (parentSessionFile) {
@@ -29,7 +32,7 @@ function expandTilde(p: string): string {
 	return p.startsWith("~/") ? path.join(os.homedir(), p.slice(2)) : p;
 }
 
-function createChildSafeState(): SubagentState {
+export function createChildSafeState(): SubagentState {
 	return {
 		baseCwd: "",
 		currentSessionId: null,
@@ -142,7 +145,7 @@ function startNestedControlInboxListener(pi: ExtensionAPI, state: SubagentState,
 	return () => clearInterval(timer);
 }
 
-/** Register the child-side `subagent` tool for fanout-authorized children. */
+/** Register delegation and supervisor replies for fanout-authorized children. */
 export default function registerFanoutChildSubagentExtension(pi: ExtensionAPI, childConfig: ChildRuntimeConfig): void {
 	if (!childConfig.fanoutChild) return;
 
@@ -157,7 +160,40 @@ export default function registerFanoutChildSubagentExtension(pi: ExtensionAPI, c
 
 	const config = loadConfig();
 	const waitToolConfig = resolveWaitToolConfig(config.waitTool);
-	const state = createChildSafeState();
+	const state = childConfig.runtimeState ?? createChildSafeState();
+	const asyncChildren = new Map<string, { dir: string; agents: string[] }>();
+	const foregroundChannels = new Set<string>();
+	const supervisorChannel = createNativeSupervisorChannel(pi, state, {
+		getChannelDirs: () => {
+			const dirs = new Set<string>();
+			for (const run of state.foregroundControls.values()) {
+				for (const child of run.activeChildren?.values() ?? []) dirs.add(resolveSupervisorChannelDir(run.runId, child.agent, child.index));
+			}
+			for (const run of state.foregroundRuns?.values() ?? []) {
+				for (const child of run.children) {
+					if (child.status === "detached") dirs.add(resolveSupervisorChannelDir(run.runId, child.agent, child.index));
+				}
+			}
+			const retiringForeground = [...foregroundChannels].filter(dir => !dirs.has(dir));
+			for (const dir of dirs) foregroundChannels.add(dir);
+			for (const dir of retiringForeground) dirs.add(dir);
+			const retiringAsync: string[] = [];
+			for (const [id, child] of asyncChildren) {
+				const status = readStatus(child.dir);
+				if (status && status.state !== "queued" && status.state !== "running") retiringAsync.push(id);
+				for (const [index, agent] of child.agents.entries()) dirs.add(resolveSupervisorChannelDir(id, agent, index));
+			}
+			return {
+				dirs: [...dirs],
+				retire: () => {
+					for (const dir of retiringForeground) foregroundChannels.delete(dir);
+					for (const id of retiringAsync) asyncChildren.delete(id);
+				},
+			};
+		},
+	});
+	const hasPendingSupervisorRequest = supervisorChannel.hasPendingRequests;
+	childConfig.hasPendingSupervisorRequest = hasPendingSupervisorRequest;
 	const executor = createSubagentExecutor({
 		pi,
 		state,
@@ -171,6 +207,8 @@ export default function registerFanoutChildSubagentExtension(pi: ExtensionAPI, c
 		discoverAgents,
 		allowMutatingManagementActions: false,
 		childRuntime: childConfig,
+		activateSupervisorTransport: supervisorChannel.activateTransport,
+		findPendingAsks: supervisorChannel.findPendingAsks,
 	});
 
 	const params = createSubagentCatalogParamsSchema();
@@ -197,13 +235,41 @@ export default function registerFanoutChildSubagentExtension(pi: ExtensionAPI, c
 
 	pi.registerTool(tool);
 	pi.on("tool_call", (event) => {
-		if (event.toolName !== "subagent") {
-			return;
-		}
+		if (event.toolName !== "subagent") return;
 		const parsed = parseFanoutChildSubagentCatalogCall(event.input);
-		if (!parsed.ok) {
-			return { block: true, reason: parsed.error };
-		}
+		if (!parsed.ok) return { block: true, reason: parsed.error };
+	});
+	const bridgeSweeper = createChildExternalJobBridgeSweeper();
+	const unsubscribeBridgeStarted = pi.events.on(SUBAGENT_ASYNC_STARTED_EVENT, (payload: unknown) => {
+		const info = payload as AsyncStartedEvent;
+		if (info.id && info.asyncDir) bridgeSweeper.track(info.id, info.asyncDir);
+	});
+	let unsubscribeAsyncStarted: (() => void) | undefined;
+	pi.on("session_start", (_event, ctx) => {
+		supervisorChannel.registerTools();
+		// The host applies the explicit allowlist to dynamic registration too.
+		if (!pi.getAllTools().some(tool => tool.name === NATIVE_SUPERVISOR_TOOL_NAME)) return;
+		// Downward asks belong to this coordinator, not its parent or persisted session file.
+		state.supervisorOwnerSessionId = ctx.sessionManager.getSessionId() || null;
+		unsubscribeAsyncStarted = pi.events.on(SUBAGENT_ASYNC_STARTED_EVENT, (payload: unknown) => {
+			const info = payload as AsyncStartedEvent;
+			if (!info.id || !info.asyncDir || info.sessionId !== state.currentSessionId) return;
+			const agents = info.agents ?? (info.agent ? [info.agent] : []);
+			asyncChildren.set(info.id, { dir: info.asyncDir, agents });
+			supervisorChannel.activateTransport();
+		});
+		supervisorChannel.start();
+		supervisorChannel.activateTransport();
+	});
+	pi.on("session_shutdown", () => {
+		unsubscribeAsyncStarted?.();
+		unsubscribeBridgeStarted?.();
+		bridgeSweeper.dispose();
+		asyncChildren.clear();
+		foregroundChannels.clear();
+		supervisorChannel.dispose();
+		if (childConfig.hasPendingSupervisorRequest === hasPendingSupervisorRequest) childConfig.hasPendingSupervisorRequest = undefined;
+		state.supervisorOwnerSessionId = null;
 	});
 	const route = resolveNestedControlRoute(childConfig);
 	if (!route) return;
