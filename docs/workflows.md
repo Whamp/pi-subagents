@@ -81,7 +81,7 @@ The fields are mutually exclusive. Relative paths resolve against the request `c
 Inline and file-backed scripts accept bounded plain-JSON `args`:
 
 ```js
-subagent({ workflowScriptPath: "workflows/review.js", args: { target: "src/workflows" } });
+subagent({ action: "execute", input: { workflowScriptPath: "workflows/review.js", args: { target: "src/workflows" } } });
 // workflows/review.js
 return runs.run("review", { agent: "reviewer", task: `Review ${args.target}` });
 ```
@@ -235,7 +235,7 @@ Two ways to put a small classifier (a script, a lookup, a fast evaluation model)
 **A typed gate** runs a command after a child finishes and turns its JSON stdout into that child's `structuredOutput`:
 
 ```js
-subagent({ workflowScript: `
+subagent({ action: "execute", input: { workflowScript: `
   const review = await runs.run("review", {
     agent: "reviewer", task: packet,
     output: "reports/review.md", outputMode: "file-only",
@@ -245,7 +245,7 @@ subagent({ workflowScript: `
     return runs.run("fix", { agent: "worker", task: "Fix the findings in reports/review.md" });
   }
   return { verdict: review.structuredOutput.verdict, report: "reports/review.md" };
-` });
+` } });
 ```
 
 The parent receives a pointer plus a verdict instead of the review text. See [typed gates](tool-reference.md#typed-gates) for the contract and failure rules.
