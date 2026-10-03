@@ -10,6 +10,7 @@
 
 ### Fixed
 
+- Port upstream #2519: advertised agents now use Pi's named prompt section instead of replacing the full system prompt. Preserve the compact `{ action, input }` discovery call and wrapped activation guidance.
 - Session startup no longer blocks the JavaScript event loop while locating globally installed agents; the first agent prompt and `subagents_enable` still wait for complete discovery. Thanks to [@trading-bl](https://github.com/trading-bl) for [#2474](https://github.com/nicobailon/pi-subagents/issues/2474).
 - The public dispatch schema and guides now clarify script-only preflight, equal timeout aliases, budget limits, and bounded child extension bindings; empty usage budgets are rejected at schema admission. Thanks to [@amchen2310](https://github.com/amchen2310) for [#2473](https://github.com/nicobailon/pi-subagents/issues/2473).
 - An older package-local `pi-ai` peer no longer disables dynamic tool activation when the running Pi supports it, so `subagent` stays hidden behind `subagents_enable` until selected. Thanks to [@abdwhb-png](https://github.com/abdwhb-png) for [#2471](https://github.com/nicobailon/pi-subagents/pull/2471).
