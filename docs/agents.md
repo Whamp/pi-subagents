@@ -265,7 +265,7 @@ pi-subagents never clones, pulls, or checks out on the machine. Generic `externa
 
 ## Parent prompt discovery
 
-Set `advertise: true` in a specialist's agent file frontmatter for parent-prompt discovery. When the `subagent` tool is active, pi-subagents adds an agent-owned catalog of names and descriptions to the parent system prompt. Disabled agents and agents excluded by the current capability ceiling are omitted. Advertisement is not supported through settings overrides or runtime registration.
+Set `advertise: true` in a specialist's agent file frontmatter for parent-prompt discovery. When the `subagent` tool is active, pi-subagents adds an agent-owned catalog of names and descriptions through Pi's named `advertised_subagents` prompt section. Catalog changes become structured transcript deltas instead of replacing the full system prompt; `subagents_enable` still returns wrapped guidance. Disabled agents and agents excluded by the current capability ceiling are omitted. Advertisement is not supported through settings overrides or runtime registration.
 
 Advertisement is opt-in discovery, not automatic routing. The catalog is sorted by name and limited to 16 agents and 12,288 total rendered UTF-8 bytes, including XML escaping, instructions, and omission counts. Descriptions are capped at 512 UTF-8 bytes before escaping. Entries that cannot fit are omitted; canonical agent names are never truncated. The parent still calls `subagent({ action: "list", input: { capabilities: true }})` before execution to confirm that the selected agent is executable (including `runner.available === true` for external CLI agents).
 

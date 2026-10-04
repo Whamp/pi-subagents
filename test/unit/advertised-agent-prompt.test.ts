@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { appendAdvertisedAgentPrompt, buildAdvertisedAgentPrompt } from "../../src/agents/advertised-agent-prompt.ts";
+import {
+	buildAdvertisedAgentCatalog,
+	buildAdvertisedAgentPrompt,
+} from "../../src/agents/advertised-agent-prompt.ts";
 import type { AgentConfig } from "../../src/agents/agents.ts";
 
 function agent(name: string, overrides: Partial<AgentConfig> = {}): AgentConfig {
@@ -19,17 +22,20 @@ function agent(name: string, overrides: Partial<AgentConfig> = {}): AgentConfig 
 
 describe("advertised agent prompt", () => {
 	it("includes only opted-in, capability-permitted agents in stable order", () => {
-		const prompt = buildAdvertisedAgentPrompt([
-			agent("zeta", { advertise: true }),
-			agent("hidden"),
-			agent("disabled", { advertise: true, disabled: true }),
-			agent("alpha", { advertise: true }),
-		], {
-			version: 1,
-			allowedAgents: ["alpha", "hidden", "zeta"],
-			denyExtensions: false,
-			sources: ["test"],
-		});
+		const prompt = buildAdvertisedAgentPrompt(
+			[
+				agent("zeta", { advertise: true }),
+				agent("hidden"),
+				agent("disabled", { advertise: true, disabled: true }),
+				agent("alpha", { advertise: true }),
+			],
+			{
+				version: 1,
+				allowedAgents: ["alpha", "hidden", "zeta"],
+				denyExtensions: false,
+				sources: ["test"],
+			},
+		);
 
 		assert.ok(prompt);
 		assert.match(prompt, /<name>alpha<\/name>/);
@@ -39,10 +45,12 @@ describe("advertised agent prompt", () => {
 	});
 
 	it("escapes agent-owned metadata and bounds the catalog", () => {
-		const agents = Array.from({ length: 18 }, (_, index) => agent(`agent-${String(index).padStart(2, "0")}`, {
-			advertise: true,
-			description: index === 0 ? `<route>&${"x".repeat(700)}` : `agent ${index}`,
-		}));
+		const agents = Array.from({ length: 18 }, (_, index) =>
+			agent(`agent-${String(index).padStart(2, "0")}`, {
+				advertise: true,
+				description: index === 0 ? `<route>&${"x".repeat(700)}` : `agent ${index}`,
+			}),
+		);
 		const prompt = buildAdvertisedAgentPrompt(agents);
 
 		assert.ok(prompt);
@@ -52,59 +60,37 @@ describe("advertised agent prompt", () => {
 		assert.match(prompt, /<omitted count="2" \/>/);
 	});
 
-	it("replaces an existing catalog instead of duplicating it", () => {
-		const first = buildAdvertisedAgentPrompt([agent("alpha", { advertise: true })]);
-		const second = buildAdvertisedAgentPrompt([agent("beta", { advertise: true })]);
-		assert.ok(first);
-		assert.ok(second);
-
-		const systemPrompt = appendAdvertisedAgentPrompt(appendAdvertisedAgentPrompt("base prompt", first), second);
-		assert.equal(systemPrompt.match(/<advertised_subagents>/gu)?.length, 1);
-		assert.doesNotMatch(systemPrompt, /<name>alpha<\/name>/);
-		assert.match(systemPrompt, /<name>beta<\/name>/);
-	});
-
 	it("returns no catalog when no agent opts in", () => {
 		assert.equal(buildAdvertisedAgentPrompt([agent("hidden")]), undefined);
-		assert.equal(appendAdvertisedAgentPrompt("base prompt\n\n", undefined), "base prompt\n\n");
+		assert.equal(buildAdvertisedAgentCatalog([agent("hidden")]), undefined);
 	});
 
 	it("admits an exact-budget canonical name and omits it one byte over", () => {
-		const emptyName = buildAdvertisedAgentPrompt([agent("", { advertise: true, description: "small" })])!;
+		const emptyName = buildAdvertisedAgentPrompt([
+			agent("", { advertise: true, description: "small" }),
+		])!;
 		const name = "x".repeat(12_288 - Buffer.byteLength(emptyName));
-		const exact = buildAdvertisedAgentPrompt([agent(name, { advertise: true, description: "small" })])!;
+		const exact = buildAdvertisedAgentPrompt([
+			agent(name, { advertise: true, description: "small" }),
+		])!;
 		assert.equal(Buffer.byteLength(exact), 12_288);
 		assert.ok(exact.includes(`<name>${name}</name>`));
-		const over = buildAdvertisedAgentPrompt([agent(`${name}x`, { advertise: true, description: "small" })])!;
+		const over = buildAdvertisedAgentPrompt([
+			agent(`${name}x`, { advertise: true, description: "small" }),
+		])!;
 		assert.doesNotMatch(over, /<name>/);
 		assert.match(over, /<omitted count="1"/);
 	});
 
-	it("withdraws a reused catalog when the last advertised agent disappears", () => {
-		const prior = appendAdvertisedAgentPrompt("base prompt", buildAdvertisedAgentPrompt([agent("alpha", { advertise: true })]));
-		assert.equal(appendAdvertisedAgentPrompt(prior, buildAdvertisedAgentPrompt([])), "base prompt");
-	});
-
-	it("handles string array systemPrompt gracefully", () => {
-		const initial = ["section 1", "section 2"];
-		const catalog = buildAdvertisedAgentPrompt([agent("alpha", { advertise: true })]);
-		const withCatalog = appendAdvertisedAgentPrompt(initial, catalog);
-		assert.ok(Array.isArray(withCatalog));
-		assert.equal(withCatalog.length, 3);
-		assert.equal(withCatalog[0], "section 1");
-		assert.equal(withCatalog[1], "section 2");
-		assert.match(withCatalog[2]!, /<name>alpha<\/name>/);
-
-		const withoutCatalog = appendAdvertisedAgentPrompt(withCatalog, undefined);
-		assert.ok(Array.isArray(withoutCatalog));
-		assert.equal(withoutCatalog.length, 2);
-		assert.equal(withoutCatalog[0], "section 1");
-		assert.equal(withoutCatalog[1], "section 2");
-	});
-
-	it("handles undefined systemPrompt gracefully", () => {
-		const catalog = buildAdvertisedAgentPrompt([agent("alpha", { advertise: true })]);
-		assert.equal(appendAdvertisedAgentPrompt(undefined, catalog), catalog);
-		assert.equal(appendAdvertisedAgentPrompt(undefined, undefined), undefined);
+	it("builds the same bounded catalog body for structured sections and wrapped activation guidance", () => {
+		const agents = [agent("alpha", { advertise: true })];
+		const body = buildAdvertisedAgentCatalog(agents);
+		assert.ok(body);
+		assert.doesNotMatch(body, /advertised_subagents/);
+		assert.match(body, /action: "list", input: \{ capabilities: true \}/);
+		assert.equal(
+			buildAdvertisedAgentPrompt(agents),
+			`<advertised_subagents>\n${body}\n</advertised_subagents>`,
+		);
 	});
 });
