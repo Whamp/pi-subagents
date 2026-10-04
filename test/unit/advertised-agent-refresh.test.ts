@@ -61,7 +61,8 @@ it("emits bounded file-only snapshots, refreshes through management, and perform
 				assert.equal(event.systemPrompt, "base");
 				const catalog = event.systemPromptOptions.sections.advertised_subagents;
 				return catalog ? "<advertised_subagents>\n" + catalog + "\n</advertised_subagents>" : "base";
-			};		const io = { statSync: 0, readdirSync: 0, readFileSync: 0 };
+			};
+			const io = { statSync: 0, readdirSync: 0, readFileSync: 0 };
 			const originals = {};
 			for (const key of Object.keys(io)) {
 				originals[key] = fs[key];
