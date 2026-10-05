@@ -1873,6 +1873,10 @@ Do work
 				const agent = discoverAgentsAll(dir).builtin.find((candidate) => candidate.name === name);
 				assert.ok(agent, `${name} builtin should be discovered`);
 				assert.ok(agent.tools, `${name} should declare required tools`);
+				assert.match(agent.systemPrompt, /Inspect original-source passages directly for/);
+				assert.match(agent.systemPrompt, /Direct inspection is the validation method/);
+				assert.match(agent.systemPrompt, /Do not claim automated source checking/);
+				assert.match(agent.systemPrompt, /mark the material claim unverified/);
 				const config = { agent: agent.name, requiredTools: agent.tools };
 				assert.equal(
 					evaluateChildToolDiagnostic(config, ["read", "write", "web_search", "fetch_content", "get_search_content"]),
@@ -1920,6 +1924,13 @@ Do work
 			const auditor = agents.find((candidate) => candidate.name === "evidence-auditor");
 			assert.equal(auditor?.inheritProjectContext, true);
 			assert.equal(auditor?.inheritSkills, false);
+
+			const researcherPrompt = agents.find((candidate) => candidate.name === "researcher")?.systemPrompt ?? "";
+			assert.match(researcherPrompt, /search-result summaries as discovery aids, not final evidence/);
+			assert.match(researcherPrompt, /direct evidence, source interpretation, and researcher inference distinctly/);
+			assert.match(researcherPrompt, /Record contradictions.*Record missing evidence/);
+			assert.match(researcherPrompt, /Never invent dates, quotations, citations, or unsupported precision/);
+			assert.match(researcherPrompt, /\*\*Support:\*\* direct evidence \| interpretation\. \*\*Confidence:\*\* high \| medium \| low/);
 		} finally {
 			if (previousHome === undefined) delete process.env.HOME;
 			else process.env.HOME = previousHome;
