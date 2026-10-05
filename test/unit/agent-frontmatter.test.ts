@@ -10,6 +10,7 @@ import { parseChain, serializeChain } from "../../src/agents/chain-serializer.ts
 import { discoverAgents, discoverAgentsAll, inspectAgentDefinitionDirectory, type AgentConfig } from "../../src/agents/agents.ts";
 import { parseFrontmatter } from "../../src/agents/frontmatter.ts";
 import { buildInProcessChildLaunch } from "../../src/runs/shared/child-launch.ts";
+import { evaluateChildToolDiagnostic } from "../../src/runs/shared/child-runtime-config.ts";
 import { applyThinkingSuffix } from "../../src/runs/shared/child-tool-plan.ts";
 import { THINKING_LEVELS } from "../../src/shared/model-info.ts";
 
@@ -1857,6 +1858,38 @@ Do work
 			else process.env.USERPROFILE = previousUserProfile;
 		}
 	});
+
+	for (const name of ["researcher", "evidence-auditor"]) {
+		it(`bundled ${name} is compatible with the three-tool web provider`, () => {
+			const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-research-provider-"));
+			const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-research-provider-home-"));
+			tempDirs.push(dir, homeDir);
+			const previousHome = process.env.HOME;
+			const previousUserProfile = process.env.USERPROFILE;
+
+			try {
+				process.env.HOME = homeDir;
+				process.env.USERPROFILE = homeDir;
+				const agent = discoverAgentsAll(dir).builtin.find((candidate) => candidate.name === name);
+				assert.ok(agent, `${name} builtin should be discovered`);
+				assert.ok(agent.tools, `${name} should declare required tools`);
+				const config = { agent: agent.name, requiredTools: agent.tools };
+				assert.equal(
+					evaluateChildToolDiagnostic(config, ["read", "write", "web_search", "fetch_content", "get_search_content"]),
+					undefined,
+				);
+				assert.deepEqual(
+					evaluateChildToolDiagnostic(config, ["read", "write", "web_search", "get_search_content"])?.missing,
+					["fetch_content"],
+				);
+			} finally {
+				if (previousHome === undefined) delete process.env.HOME;
+				else process.env.HOME = previousHome;
+				if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+				else process.env.USERPROFILE = previousUserProfile;
+			}
+		});
+	}
 
 	it("bundled standard agents keep bounded tool allowlists", () => {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-builtin-supervisor-tool-"));
