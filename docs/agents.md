@@ -192,13 +192,13 @@ Native `oracle` runs inside Pi and can use its configured read tools. The Claude
 
 ### Web research prerequisites
 
-The `researcher` and `evidence-auditor` builtins use `web_search`, `fetch_content`, `get_search_content`, and selective `source_check` validation. Those require [pi-web-access](https://github.com/nicobailon/pi-web-access):
+The `researcher` and `evidence-auditor` builtins require `web_search`, `fetch_content`, and `get_search_content` for bounded research and direct original-source inspection. Those tools require [pi-web-access](https://github.com/nicobailon/pi-web-access):
 
 ```bash
 pi install npm:pi-web-access
 ```
 
-The provider must be loaded in the child and register all four tools, including `source_check`, before launch; a missing required tool prevents a successful run. Foreground children do not load ambient parent extensions: configure `extensions` or `subagentOnlyExtensions` explicitly, or use background extension discovery as described in [Tool and extension selection](#tool-and-extension-selection). For `researcher`, fetched-source inspection is a fallback for a registered `source_check` call failing, not for missing registration.
+The provider must be loaded in the child and register all three web tools before launch. A missing required tool prevents a successful run. Foreground children do not load ambient parent extensions. Configure `extensions` or `subagentOnlyExtensions` explicitly, or use background extension discovery as described in [Tool and extension selection](#tool-and-extension-selection). Both roles inspect original-source passages for material claims and disclose claims they cannot verify. They distinguish direct evidence, interpretation, and inference, and retain contradictions, uncertainty, and confidence. Automated source-check capability is not claimed.
 
 ## Overriding builtins and custom agents
 

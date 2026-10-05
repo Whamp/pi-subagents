@@ -10,6 +10,7 @@ import { parseChain, serializeChain } from "../../src/agents/chain-serializer.ts
 import { discoverAgents, discoverAgentsAll, inspectAgentDefinitionDirectory, type AgentConfig } from "../../src/agents/agents.ts";
 import { parseFrontmatter } from "../../src/agents/frontmatter.ts";
 import { buildInProcessChildLaunch } from "../../src/runs/shared/child-launch.ts";
+import { evaluateChildToolDiagnostic } from "../../src/runs/shared/child-runtime-config.ts";
 import { applyThinkingSuffix } from "../../src/runs/shared/child-tool-plan.ts";
 import { THINKING_LEVELS } from "../../src/shared/model-info.ts";
 
@@ -1858,6 +1859,42 @@ Do work
 		}
 	});
 
+	for (const name of ["researcher", "evidence-auditor"]) {
+		void it(`bundled ${name} is compatible with the three-tool web provider`, () => {
+			const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-research-provider-"));
+			const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-research-provider-home-"));
+			tempDirs.push(dir, homeDir);
+			const previousHome = process.env.HOME;
+			const previousUserProfile = process.env.USERPROFILE;
+
+			try {
+				process.env.HOME = homeDir;
+				process.env.USERPROFILE = homeDir;
+				const agent = discoverAgentsAll(dir).builtin.find((candidate) => candidate.name === name);
+				assert.ok(agent, `${name} builtin should be discovered`);
+				assert.ok(agent.tools, `${name} should declare required tools`);
+				assert.match(agent.systemPrompt, /Inspect original-source passages directly for/);
+				assert.match(agent.systemPrompt, /Direct inspection is the validation method/);
+				assert.match(agent.systemPrompt, /Do not claim automated source checking/);
+				assert.match(agent.systemPrompt, /mark the material claim unverified/);
+				const config = { agent: agent.name, requiredTools: agent.tools };
+				assert.equal(
+					evaluateChildToolDiagnostic(config, ["read", "write", "web_search", "fetch_content", "get_search_content"]),
+					undefined,
+				);
+				assert.deepEqual(
+					evaluateChildToolDiagnostic(config, ["read", "write", "web_search", "get_search_content"])?.missing,
+					["fetch_content"],
+				);
+			} finally {
+				if (previousHome === undefined) delete process.env.HOME;
+				else process.env.HOME = previousHome;
+				if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+				else process.env.USERPROFILE = previousUserProfile;
+			}
+		});
+	}
+
 	it("bundled standard agents keep bounded tool allowlists", () => {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-builtin-supervisor-tool-"));
 		const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-builtin-supervisor-tool-home-"));
@@ -1875,8 +1912,8 @@ Do work
 				delegate: ["read", "grep", "find", "ls", "bash", "edit", "write", "contact_supervisor"],
 				reviewer: ["read", "grep", "find", "ls", "watchdog_diff", "contact_supervisor"],
 				scout: ["read", "grep", "find", "ls", "bash", "write", "contact_supervisor"],
-				researcher: ["read", "write", "web_search", "fetch_content", "get_search_content", "source_check"],
-				"evidence-auditor": ["read", "web_search", "fetch_content", "get_search_content", "source_check"],
+				researcher: ["read", "write", "web_search", "fetch_content", "get_search_content"],
+				"evidence-auditor": ["read", "web_search", "fetch_content", "get_search_content"],
 			};
 			for (const [name, tools] of Object.entries(expectedTools)) {
 				const agent = agents.find((candidate) => candidate.name === name);
@@ -1890,12 +1927,9 @@ Do work
 
 			const researcherPrompt = agents.find((candidate) => candidate.name === "researcher")?.systemPrompt ?? "";
 			assert.match(researcherPrompt, /search-result summaries as discovery aids, not final evidence/);
-			assert.match(researcherPrompt, /source_check.*decision-critical or disputed claims/);
 			assert.match(researcherPrompt, /direct evidence, source interpretation, and researcher inference distinctly/);
 			assert.match(researcherPrompt, /Record contradictions.*Record missing evidence/);
 			assert.match(researcherPrompt, /Never invent dates, quotations, citations, or unsupported precision/);
-			assert.match(researcherPrompt, /`source_check` must be registered by the loaded provider before launch/);
-			assert.match(researcherPrompt, /If a registered `source_check` call fails, continue/);
 			assert.match(researcherPrompt, /\*\*Support:\*\* direct evidence \| interpretation\. \*\*Confidence:\*\* high \| medium \| low/);
 		} finally {
 			if (previousHome === undefined) delete process.env.HOME;
